@@ -1,25 +1,2143 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
-    <title>BeyondWalls Dashboard</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.39.0/build/stlite.css"/>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.39.0/build/stlite.js"></script>
-    <script>
-      stlite.mount({
-        requirements: ["pandas"], // Add any needed libraries here
-        entrypoint: "app.py",
-        files: {
-          "app.py": `
-# PASTE THE STREAMLIT PYTHON CODE FROM ABOVE HERE
-`
-        }
-      }, document.getElementById("root"));
-    </script>
-  </body>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Report Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #6c8aff;
+    --accent2: #a78bfa;
+    --accent3: #34d399;
+    --accent4: #f59e0b;
+    --text: #e8eaf6;
+    --text-muted: #7b82a8;
+    --danger: #f87171;
+    --tab-cp: #f59e0b;
+    --tab-ps: #34d399;
+    --tab-wpr: #6c8aff;
+    --tab-ppc: #f472b6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  .app-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .app-logo {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+  }
+  .header-sep { width: 1px; height: 28px; background: var(--border); }
+  .header-meta {
+    display: flex;
+    gap: 16px;
+    flex: 1;
+    align-items: center;
+  }
+  .header-meta label { color: var(--text-muted); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .header-meta input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .header-meta input:focus { border-color: var(--accent); }
+  .hm-project { flex: 1; min-width: 180px; }
+  .hm-date { width: 160px; }
+
+  /* TABS */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0 32px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    padding: 14px 24px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all .2s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab-btn .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text); }
+  .tab-btn[data-tab="cp"].active { border-color: var(--tab-cp); color: var(--tab-cp); }
+  .tab-btn[data-tab="ps"].active { border-color: var(--tab-ps); color: var(--tab-ps); }
+  .tab-btn[data-tab="wpr"].active { border-color: var(--tab-wpr); color: var(--tab-wpr); }
+  .tab-btn[data-tab="ppc"].active { border-color: var(--tab-ppc); color: var(--tab-ppc); }
+  .tab-btn[data-tab="cp"] .dot { background: var(--tab-cp); }
+  .tab-btn[data-tab="ps"] .dot { background: var(--tab-ps); }
+  .tab-btn[data-tab="wpr"] .dot { background: var(--tab-wpr); }
+  .tab-btn[data-tab="ppc"] .dot { background: var(--tab-ppc); }
+
+  /* PANELS */
+  .tab-panel { display: none; padding: 32px; max-width: 1100px; margin: 0 auto; }
+  .tab-panel.active { display: block; }
+
+  /* SECTION CARD */
+  .section-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .section-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-card-header .icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .section-card-header h3 { font-size: 14px; font-weight: 600; }
+  .section-card-header .slide-ref { font-size: 11px; color: var(--text-muted); margin-left: auto; font-family: 'DM Mono', monospace; }
+  .section-card-body { padding: 20px; }
+
+  /* FORM ELEMENTS */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    width: 100%;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(108,138,255,.12);
+  }
+  .form-group textarea { resize: vertical; min-height: 90px; }
+  .form-group select option { background: var(--surface2); }
+
+  /* WEEK GRID - for 5-week tables */
+  .week-table-wrap { overflow-x: auto; }
+  .week-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .week-table th {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .week-table td { border: 1px solid var(--border); padding: 2px; }
+  .week-table td input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 6px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    width: 100%;
+  }
+  .week-table td input:focus { background: rgba(108,138,255,.08); }
+  .week-table .row-label { padding: 8px 10px; background: var(--surface2); font-weight: 500; font-size: 12px; white-space: nowrap; color: var(--text-muted); }
+  .week-table .section-row td { background: rgba(108,138,255,.06); font-weight: 600; color: var(--accent); padding: 6px 10px; font-size: 11px; letter-spacing: .5px; }
+
+  /* DYNAMIC TABLE (CP list, etc.) */
+  .dyn-table-wrap { overflow-x: auto; }
+  .dyn-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dyn-table th {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 9px 12px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .dyn-table td { border: 1px solid var(--border); padding: 2px; }
+  .dyn-table td input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    padding: 7px 10px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    width: 100%;
+  }
+  .dyn-table td input:focus { background: rgba(108,138,255,.08); }
+  .dyn-table .del-btn {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    padding: 6px 10px;
+    font-size: 15px;
+    opacity: .6;
+  }
+  .dyn-table .del-btn:hover { opacity: 1; }
+  .add-row-btn {
+    margin-top: 10px;
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    border-radius: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    width: 100%;
+    transition: all .2s;
+  }
+  .add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* IMAGE UPLOAD */
+  .img-upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    background: var(--surface2);
+  }
+  .img-upload-zone:hover { border-color: var(--accent); background: rgba(108,138,255,.05); }
+  .img-upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .img-upload-zone .upload-icon { font-size: 28px; margin-bottom: 8px; }
+  .img-upload-zone p { color: var(--text-muted); font-size: 12px; }
+  .img-upload-zone .file-name { color: var(--accent3); font-size: 12px; font-weight: 500; margin-top: 6px; font-family: 'DM Mono'; }
+  .img-upload-zone.has-file { border-color: var(--accent3); }
+  .img-preview { max-width: 100%; max-height: 160px; border-radius: 6px; margin-top: 10px; object-fit: contain; }
+
+  /* GENERATE BUTTON */
+  .generate-bar {
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    z-index: 50;
+  }
+  .gen-info { color: var(--text-muted); font-size: 12px; }
+  .gen-info strong { color: var(--text); }
+  .generate-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 10px;
+    color: white;
+    padding: 12px 28px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: opacity .2s, transform .1s;
+    box-shadow: 0 4px 20px rgba(108,138,255,.35);
+  }
+  .generate-btn:hover { opacity: .9; }
+  .generate-btn:active { transform: scale(.98); }
+  .generate-btn.cp-btn { background: linear-gradient(135deg, #f59e0b, #fb923c); box-shadow: 0 4px 20px rgba(245,158,11,.3); }
+  .generate-btn.ps-btn { background: linear-gradient(135deg, #34d399, #06b6d4); box-shadow: 0 4px 20px rgba(52,211,153,.3); }
+  .generate-btn.wpr-btn { background: linear-gradient(135deg, #6c8aff, #a78bfa); box-shadow: 0 4px 20px rgba(108,138,255,.3); }
+  .generate-btn.ppc-btn { background: linear-gradient(135deg, #f472b6, #fb7185); box-shadow: 0 4px 20px rgba(244,114,182,.3); }
+
+  /* MISC */
+  .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-style: italic; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .subsection-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-muted); margin-bottom: 12px; margin-top: 4px; }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 80px; right: 32px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); padding: 12px 20px; border-radius: 10px;
+    font-size: 13px; z-index: 999;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    opacity: 0; transform: translateY(10px);
+    transition: all .3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { border-color: var(--accent3); }
+  .toast.error { border-color: var(--danger); }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .app-header { padding: 0 16px; flex-wrap: wrap; height: auto; padding: 12px 16px; gap: 12px; }
+    .tab-panel { padding: 16px; }
+    .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+    .generate-bar { padding: 12px 16px; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="app-logo">📋 WeeklyDash</div>
+  <div class="header-sep"></div>
+  <div class="header-meta">
+    <label>Project</label>
+    <input class="hm-project" type="text" id="g_project" placeholder="e.g. Aishwaryam Abhimaan" />
+    <label>Week</label>
+    <input class="hm-date" type="text" id="g_week_range" placeholder="e.g. 1–7 Sept 2025" />
+    <label>Month</label>
+    <input style="width:130px" type="text" id="g_month" placeholder="e.g. September 2025" />
+  </div>
+</header>
+
+<!-- TAB BAR -->
+<nav class="tab-bar">
+  <button class="tab-btn active" data-tab="cp"><span class="dot"></span>CP Agg Report</button>
+  <button class="tab-btn" data-tab="ps"><span class="dot"></span>Pre-sales Review</button>
+  <button class="tab-btn" data-tab="wpr"><span class="dot"></span>Weekly Project Review</button>
+  <button class="tab-btn" data-tab="ppc"><span class="dot"></span>PPC Review</button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 1: CP AGG WEEKLY REPORT
+═══════════════════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-cp">
+
+  <!-- Slide 2: Weekly Aggregated Metrics Table -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">📊</div>
+      <h3>Weekly Aggregated Metrics</h3>
+      <span class="slide-ref">Slide 2</span>
+    </div>
+    <div class="section-card-body">
+      <p class="hint" style="margin-bottom:14px">Fill numbers for each week. Leave blank if not applicable.</p>
+      <div class="week-table-wrap">
+        <table class="week-table" id="cp_metrics_table">
+          <thead>
+            <tr>
+              <th style="min-width:200px">Metric</th>
+              <th>Week 1</th><th>Week 2</th><th>Week 3</th><th>Week 4</th><th>Week 5</th><th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="cp_metrics_body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 3: Last Week Visits -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">🎯</div>
+      <h3>Last Week Visits – Target vs Achieved</h3>
+      <span class="slide-ref">Slide 3</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid-3">
+        <div class="form-group"><label>Target Visits</label><input type="number" id="cp_visit_target" placeholder="40"/></div>
+        <div class="form-group"><label>Achieved Visits</label><input type="number" id="cp_visit_achieved" placeholder="41"/></div>
+        <div class="form-group"><label>Weekend Target</label><input type="number" id="cp_weekend_target" placeholder="35"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group"><label>Major Unqualification Reasons</label><input type="text" id="cp_unqual_reasons" placeholder="e.g. Low budget, Postponed plan, Not interested"/></div>
+      <div style="margin-top:14px" class="form-group"><label>Budget Observations (2BHK)</label><textarea id="cp_budget_obs" placeholder="e.g. Most enquiries in 40-42L range, 4 visits warm with 46L budget..."></textarea></div>
+      <div class="form-group" style="margin-top:14px"><label>Overall Weekly Target</label><input type="text" id="cp_weekly_target_range" placeholder="e.g. 45–50"/></div>
+    </div>
+  </div>
+
+  <!-- Slide 4: Weekly Active CPs -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">🤝</div>
+      <h3>Weekly Active CPs</h3>
+      <span class="slide-ref">Slide 4</span>
+    </div>
+    <div class="section-card-body">
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>CP Name</th><th>CP Firm</th><th>Weekly Visits</th><th></th></tr></thead>
+          <tbody id="cp_weekly_active_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('cp_weekly_active_body', ['CP Name','Firm Name','0'])">+ Add CP</button>
+    </div>
+  </div>
+
+  <!-- Slide 5: Monthly Active CPs -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">📅</div>
+      <h3>Monthly Active CPs</h3>
+      <span class="slide-ref">Slide 5</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid-3" style="margin-bottom:16px">
+        <div class="form-group"><label>Monthly Visit Target</label><input type="number" id="cp_month_target" placeholder="200"/></div>
+        <div class="form-group"><label>Monthly Visits Achieved</label><input type="number" id="cp_month_achieved" placeholder="41"/></div>
+      </div>
+      <div class="form-grid-2" style="margin-bottom:16px">
+        <div class="form-group"><label>2BHK Bookings (Month)</label><input type="number" id="cp_2bhk_bookings" placeholder="7"/></div>
+        <div class="form-group"><label>1BHK Bookings (Month)</label><input type="number" id="cp_1bhk_bookings" placeholder="12"/></div>
+      </div>
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>CP Name</th><th>CP Firm</th><th>Monthly Visits</th><th></th></tr></thead>
+          <tbody id="cp_monthly_active_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('cp_monthly_active_body', ['CP Name','Firm Name','0'])">+ Add CP</button>
+    </div>
+  </div>
+
+  <!-- Slide 6: Newly Activated CPs -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">✨</div>
+      <h3>Newly Activated CPs</h3>
+      <span class="slide-ref">Slide 6</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group"><label>Newly Activated CP Firms (comma separated)</label><input type="text" id="cp_new_firms" placeholder="e.g. Sky Dream Realty, Platinum Properties, Kanak Associates"/></div>
+    </div>
+  </div>
+
+  <!-- Slide 7: Active Firms -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">🏢</div>
+      <h3>Active Firms</h3>
+      <span class="slide-ref">Slide 7</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group"><label>Active Firm Names (comma separated or one per line)</label><textarea id="cp_active_firms" placeholder="24 Estates&#10;Infinity Homes&#10;Square Yards&#10;..."></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 8: Friday Commitment Sheet -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">📎</div>
+      <h3>Friday Commitment Sheet</h3>
+      <span class="slide-ref">Slide 8</span>
+    </div>
+    <div class="section-card-body">
+      <div class="img-upload-zone" id="zone_cp_commitment">
+        <input type="file" accept="image/*" onchange="handleImageUpload(this,'zone_cp_commitment','cp_commitment_img')">
+        <div class="upload-icon">📋</div>
+        <p>Upload Commitment Sheet screenshot</p>
+        <p class="hint">PNG/JPG — or leave blank for placeholder</p>
+        <div class="file-name" id="cp_commitment_img_name"></div>
+        <img class="img-preview" id="cp_commitment_img_preview" style="display:none"/>
+      </div>
+      <input type="hidden" id="cp_commitment_img"/>
+    </div>
+  </div>
+
+  <!-- Slide 9: Commitment vs Achieved -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">⚖️</div>
+      <h3>Commitment vs Achieved (Last Week)</h3>
+      <span class="slide-ref">Slide 9</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid-2">
+        <div class="form-group"><label>Committed CP Visits</label><input type="number" id="cp_committed" placeholder="40"/></div>
+        <div class="form-group"><label>Achieved Visits</label><input type="number" id="cp_comm_achieved" placeholder="32"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 10: Top Performing CPs -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">🏆</div>
+      <h3>Top Performing CPs</h3>
+      <span class="slide-ref">Slide 10</span>
+    </div>
+    <div class="section-card-body">
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>CP Company</th><th>CP Name</th><th>Visits</th><th>Bookings</th><th></th></tr></thead>
+          <tbody id="cp_top_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('cp_top_body', ['Company','Name','0','0'])">+ Add CP</button>
+    </div>
+  </div>
+
+  <!-- Slide 11: CP Outstanding Bills -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">💰</div>
+      <h3>CP Outstanding Bills Ageing</h3>
+      <span class="slide-ref">Slide 11</span>
+    </div>
+    <div class="section-card-body">
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>CP Name</th><th>Amount (₹)</th><th>Ageing (Days)</th><th>Remarks</th><th></th></tr></thead>
+          <tbody id="cp_bills_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('cp_bills_body', ['CP Name','0','0',''])">+ Add Entry</button>
+      <p class="hint" style="margin-top:8px">Leave empty if not applicable — slide will say "No outstanding bills"</p>
+    </div>
+  </div>
+
+  <!-- Slide 12: Outreach Strategy -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">📣</div>
+      <h3>Outreach Strategy for Next Week</h3>
+      <span class="slide-ref">Slide 12</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group"><textarea id="cp_outreach" placeholder="Describe the outreach strategy in detail..."></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 13: Communication Plan -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(245,158,11,.15)">📨</div>
+      <h3>Communication Plan</h3>
+      <span class="slide-ref">Slide 13</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group"><textarea id="cp_comm_plan" placeholder="Paste the CP communication message / offer details here..."></textarea></div>
+    </div>
+  </div>
+
+</div><!-- end tab-cp -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 2: PRE-SALES REVIEW
+═══════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-ps">
+
+  <!-- Slide 2: Pre-Sales Performance -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(52,211,153,.15)">📞</div>
+      <h3>Pre-Sales Performance</h3>
+      <span class="slide-ref">Slide 2</span>
+    </div>
+    <div class="section-card-body">
+      <div class="subsection-title">Month & Week Totals</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Total Leads (Month)</label><input type="number" id="ps_total_leads_month"/></div>
+        <div class="form-group"><label>Leads Last Week</label><input type="number" id="ps_leads_week"/></div>
+        <div class="form-group"><label>Qualified Leads (Last Week)</label><input type="number" id="ps_qualified_week"/></div>
+        <div class="form-group"><label>Site Visits Scheduled (Last Week)</label><input type="number" id="ps_svs_week"/></div>
+        <div class="form-group"><label>Site Visits Conducted (Last Week)</label><input type="number" id="ps_svc_week"/></div>
+        <div class="form-group"><label>Lead→SVC Ratio % (Month Target 10%)</label><input type="text" id="ps_lead_svc_ratio" placeholder="e.g. 9.2%"/></div>
+        <div class="form-group"><label>Avg Daily Call Attempts (7-day, Target 200)</label><input type="number" id="ps_daily_calls"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="subsection-title">Team Bookings Attributed</div>
+      <div class="form-grid-3">
+        <div class="form-group"><label>Pre-Sales 1 Bookings</label><input type="number" id="ps_p1_bookings"/></div>
+        <div class="form-group"><label>Pre-Sales 2 Bookings</label><input type="number" id="ps_p2_bookings"/></div>
+        <div class="form-group"><label>Total Bookings</label><input type="number" id="ps_total_bookings"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group"><label>Inferences / Notes</label><textarea id="ps_inferences"></textarea></div>
+      <div class="divider"></div>
+      <div class="subsection-title">Visits Clashed with CP</div>
+      <div class="form-group"><label>No. of Visits Clashed with CP (Last Week)</label><input type="number" id="ps_cp_clash"/></div>
+      <div class="divider"></div>
+      <div class="subsection-title">Leads Scheduled but Not Conducted</div>
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>Lead Name</th><th>Remark / Reason</th><th></th></tr></thead>
+          <tbody id="ps_not_conducted_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('ps_not_conducted_body', ['Lead Name','Reason'])">+ Add Lead</button>
+    </div>
+  </div>
+
+  <!-- Slide 3: Unqualification Reasons -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(52,211,153,.15)">❌</div>
+      <h3>Lead Unqualification Reasons & Top Funnel Stats</h3>
+      <span class="slide-ref">Slide 3</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group"><label>Inferences (one per line)</label><textarea id="ps_unqual_inferences" placeholder="- Budget mismatch&#10;- Location preference&#10;- Postponed..."></textarea></div>
+      <div class="divider"></div>
+      <div class="form-group"><label>Mitigation Measures for Next Week (one per line)</label><textarea id="ps_mitigation" placeholder="- Increase follow-up frequency&#10;- Target alternate segments..."></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 4: Call Logs Audit -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(52,211,153,.15)">📱</div>
+      <h3>Call Logs Audit</h3>
+      <span class="slide-ref">Slide 4</span>
+    </div>
+    <div class="section-card-body">
+      <p class="hint" style="margin-bottom:14px">Upload screenshots of online calls. You can add multiple images.</p>
+      <div id="ps_call_logs_container">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div class="img-upload-zone" id="zone_ps_call1">
+              <input type="file" accept="image/*" onchange="handleImageUpload(this,'zone_ps_call1','ps_call_img_1')">
+              <div class="upload-icon">📞</div>
+              <p>Call Log Screenshot 1</p>
+              <div class="file-name" id="ps_call_img_1_name"></div>
+              <img class="img-preview" id="ps_call_img_1_preview" style="display:none"/>
+            </div>
+            <input type="hidden" id="ps_call_img_1"/>
+          </div>
+          <div>
+            <div class="img-upload-zone" id="zone_ps_call2">
+              <input type="file" accept="image/*" onchange="handleImageUpload(this,'zone_ps_call2','ps_call_img_2')">
+              <div class="upload-icon">📞</div>
+              <p>Call Log Screenshot 2</p>
+              <div class="file-name" id="ps_call_img_2_name"></div>
+              <img class="img-preview" id="ps_call_img_2_preview" style="display:none"/>
+            </div>
+            <input type="hidden" id="ps_call_img_2"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 5: Visit Lineups -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(52,211,153,.15)">🗓️</div>
+      <h3>Visit Lineups Received (Kylas)</h3>
+      <span class="slide-ref">Slide 5</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group" style="margin-bottom:16px"><label>Total Visit Count (upcoming weekend)</label><input type="number" id="ps_visit_lineup_count" placeholder="e.g. 28"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div class="img-upload-zone" id="zone_ps_kylas1">
+            <input type="file" accept="image/*" onchange="handleImageUpload(this,'zone_ps_kylas1','ps_kylas_img_1')">
+            <div class="upload-icon">📋</div>
+            <p>Kylas Visit Lineup Screenshot 1</p>
+            <div class="file-name" id="ps_kylas_img_1_name"></div>
+            <img class="img-preview" id="ps_kylas_img_1_preview" style="display:none"/>
+          </div>
+          <input type="hidden" id="ps_kylas_img_1"/>
+        </div>
+        <div>
+          <div class="img-upload-zone" id="zone_ps_kylas2">
+            <input type="file" accept="image/*" onchange="handleImageUpload(this,'zone_ps_kylas2','ps_kylas_img_2')">
+            <div class="upload-icon">📋</div>
+            <p>Kylas Visit Lineup Screenshot 2</p>
+            <div class="file-name" id="ps_kylas_img_2_name"></div>
+            <img class="img-preview" id="ps_kylas_img_2_preview" style="display:none"/>
+          </div>
+          <input type="hidden" id="ps_kylas_img_2"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 6: Lead Integration Check -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(52,211,153,.15)">🔗</div>
+      <h3>Lead Integration Check</h3>
+      <span class="slide-ref">Slide 6</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid-2" style="margin-bottom:16px">
+        <div class="form-group"><label>Leads from Campaign</label><input type="number" id="ps_campaign_leads"/></div>
+        <div class="form-group"><label>Leads Assigned to Pre-sales</label><input type="number" id="ps_assigned_leads"/></div>
+      </div>
+      <div class="form-group"><label>Mismatch / Errors Found</label><textarea id="ps_lead_errors" placeholder="Describe any mismatch, or type 'No mismatch found'..."></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 7: Nurturing Check -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(52,211,153,.15)">💬</div>
+      <h3>Nurturing Check</h3>
+      <span class="slide-ref">Slide 7</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group"><label>Nurturing Content Being Shared</label><textarea id="ps_nurturing_content" placeholder="Describe what content presales is sharing with customers..."></textarea></div>
+      <div class="form-group" style="margin-top:14px"><label>Offer Changes / Updates to Communicate</label><textarea id="ps_offer_changes" placeholder="Any new offers or changes to inform presales team..."></textarea></div>
+    </div>
+  </div>
+
+</div><!-- end tab-ps -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 3: WEEKLY PROJECT REVIEW
+═══════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-wpr">
+
+  <!-- Slide 2: Target vs Achieved -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">📈</div>
+      <h3>Target vs Achieved (Weekly)</h3>
+      <span class="slide-ref">Slide 2</span>
+    </div>
+    <div class="section-card-body">
+      <div class="week-table-wrap">
+        <table class="week-table" id="wpr_metrics_table">
+          <thead>
+            <tr>
+              <th style="min-width:220px">Metric</th>
+              <th>W1 Target</th><th>W1 Achieved</th>
+              <th>W2 Target</th><th>W2 Achieved</th>
+              <th>W3 Target</th><th>W3 Achieved</th>
+              <th>W4 Target</th><th>W4 Achieved</th>
+              <th>Total Target</th><th>Total Achieved</th>
+            </tr>
+          </thead>
+          <tbody id="wpr_metrics_body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 3: Unqualification Reasons -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">❌</div>
+      <h3>Lead Unqualification Reasons & Top Funnel Stats</h3>
+      <span class="slide-ref">Slide 3</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group"><label>Inferences (one per line)</label><textarea id="wpr_unqual_inferences" placeholder="- Budget mismatch being the top reason&#10;- Location preference issues..."></textarea></div>
+      <div class="divider"></div>
+      <div class="form-group"><label>Mitigation Measures (one per line)</label><textarea id="wpr_mitigation" placeholder="- Revisit targeting parameters&#10;- Increase nurturing touchpoints..."></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 4: Pre-Sales Performance -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">📞</div>
+      <h3>Pre-Sales Performance</h3>
+      <span class="slide-ref">Slide 4</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Total Leads (Month)</label><input type="number" id="wpr_ps_leads_month"/></div>
+        <div class="form-group"><label>Leads Last Week</label><input type="number" id="wpr_ps_leads_week"/></div>
+        <div class="form-group"><label>Qualified Last Week</label><input type="number" id="wpr_ps_qualified_week"/></div>
+        <div class="form-group"><label>SVS (Last Week)</label><input type="number" id="wpr_ps_svs_week"/></div>
+        <div class="form-group"><label>SVC (Last Week)</label><input type="number" id="wpr_ps_svc_week"/></div>
+        <div class="form-group"><label>Lead→SVC Ratio % (Target 10%)</label><input type="text" id="wpr_ps_ratio" placeholder="e.g. 9.2%"/></div>
+        <div class="form-group"><label>Avg Daily Calls (Target 200)</label><input type="number" id="wpr_ps_daily_calls"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-grid-3">
+        <div class="form-group"><label>PS1 Bookings</label><input type="number" id="wpr_ps1_bookings"/></div>
+        <div class="form-group"><label>PS2 Bookings</label><input type="number" id="wpr_ps2_bookings"/></div>
+        <div class="form-group"><label>Total Bookings</label><input type="number" id="wpr_ps_total_bookings"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group"><label>Inferences</label><textarea id="wpr_ps_inferences"></textarea></div>
+      <div class="divider"></div>
+      <div class="subsection-title">Leads Scheduled but Not Conducted</div>
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>Lead</th><th>Remark</th><th></th></tr></thead>
+          <tbody id="wpr_not_conducted_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('wpr_not_conducted_body', ['Lead Name','Reason'])">+ Add Lead</button>
+    </div>
+  </div>
+
+  <!-- Slide 5: Sales Performance Weekly -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">🏠</div>
+      <h3>Sales Performance Weekly</h3>
+      <span class="slide-ref">Slide 5</span>
+    </div>
+    <div class="section-card-body">
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>Salesperson</th><th>Visits Attended</th><th>Hot Clients</th><th>Cold Clients</th><th>Lost</th><th>Bookings</th><th>Revisit Target</th><th></th></tr></thead>
+          <tbody id="wpr_sales_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('wpr_sales_body', ['Sales 1','0','0','0','0','0','0'])">+ Add Salesperson</button>
+      <div class="form-group" style="margin-top:14px"><label>Inferences</label><textarea id="wpr_sales_inferences"></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 6: Lead-by-Lead Revisit Review -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">🔄</div>
+      <h3>Lead-by-Lead Revisit Review (Last Week)</h3>
+      <span class="slide-ref">Slide 6</span>
+    </div>
+    <div class="section-card-body">
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>Lead Name</th><th>In-depth Remark</th><th>Status</th><th></th></tr></thead>
+          <tbody id="wpr_revisit_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('wpr_revisit_body', ['Lead Name','Remark','Hot'])">+ Add Lead</button>
+    </div>
+  </div>
+
+  <!-- Slide 7: Sales MTD -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">📊</div>
+      <h3>Sales Performance – Month Overview</h3>
+      <span class="slide-ref">Slide 7</span>
+    </div>
+    <div class="section-card-body">
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>Salesperson</th><th>Total Visits MTD</th><th>Revisits MTD</th><th>Bookings MTD</th><th>Lost MTD</th><th>Conversion %</th><th></th></tr></thead>
+          <tbody id="wpr_sales_mtd_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('wpr_sales_mtd_body', ['Sales 1','0','0','0','0','0%'])">+ Add Salesperson</button>
+      <div class="form-group" style="margin-top:14px"><label>Inferences</label><textarea id="wpr_sales_mtd_inferences"></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 8: Inventory & Budget Visits -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">🏗️</div>
+      <h3>Inventory & Budget-wise Visits Overview (MTD)</h3>
+      <span class="slide-ref">Slide 8</span>
+    </div>
+    <div class="section-card-body">
+      <div class="subsection-title">Visits by Source × Inventory Type</div>
+      <div class="form-grid-3" style="margin-bottom:8px">
+        <div class="form-group"><label>Inventory Type 1 Name</label><input type="text" id="wpr_inv1_name" placeholder="e.g. 2BHK"/></div>
+        <div class="form-group"><label>Inventory Type 2 Name</label><input type="text" id="wpr_inv2_name" placeholder="e.g. 3BHK"/></div>
+        <div class="form-group"><label>Inventory Type 3 Name</label><input type="text" id="wpr_inv3_name" placeholder="e.g. 1BHK"/></div>
+      </div>
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>Source</th><th>Inv Type 1</th><th>Inv Type 2</th><th>Inv Type 3</th><th>Total</th><th></th></tr></thead>
+          <tbody id="wpr_inv_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addRow('wpr_inv_body', ['Pre Sales','0','0','0','0'])">+ Add Source</button>
+      <div class="divider"></div>
+      <div class="form-group"><label>Budget Range Observations</label><textarea id="wpr_budget_obs" placeholder="50L to 70L – 07&#10;70L to 80L – 00&#10;80L to 90L – 25..."></textarea></div>
+      <div class="form-group" style="margin-top:14px"><label>Inferences</label><textarea id="wpr_inv_inferences"></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 9: Lost Visit Bifurcation Weekly -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">📉</div>
+      <h3>Lost Visits – Source-wise Bifurcation (Weekly)</h3>
+      <span class="slide-ref">Slide 9</span>
+    </div>
+    <div class="section-card-body">
+      <div class="week-table-wrap">
+        <table class="week-table" id="wpr_lost_weekly_table">
+          <thead><tr><th>Lost Reason</th><th>Pre-sales SVC</th><th>Walkin Direct SVC</th><th>CP SVC</th><th>Total</th></tr></thead>
+          <tbody id="wpr_lost_weekly_body"></tbody>
+        </table>
+      </div>
+      <div class="form-group" style="margin-top:14px"><label>Inferences</label><textarea id="wpr_lost_weekly_inferences"></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 10: Lost Reasons Trend MTD -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">📆</div>
+      <h3>Lost Reasons Trend – Month till Date</h3>
+      <span class="slide-ref">Slide 10</span>
+    </div>
+    <div class="section-card-body">
+      <div class="week-table-wrap">
+        <table class="week-table">
+          <thead><tr><th>Lost Reason</th><th>Week 1</th><th>Week 2</th><th>Week 3</th><th>Week 4</th></tr></thead>
+          <tbody id="wpr_lost_mtd_body"></tbody>
+        </table>
+      </div>
+      <div class="form-group" style="margin-top:14px"><label>Inferences</label><textarea id="wpr_lost_mtd_inferences"></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 11: Way Forward -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">🗺️</div>
+      <h3>Way Forward & MoM</h3>
+      <span class="slide-ref">Slide 11</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-group"><textarea id="wpr_way_forward" placeholder="Key decisions and action items from review..."></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 12: Live Inventory Status -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">🏘️</div>
+      <h3>Live Inventory Status</h3>
+      <span class="slide-ref">Slide 12</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Inventory Type 1</label><input type="text" id="wpr_inv_t1"/></div>
+        <div class="form-group"><label>Type 1 Total</label><input type="number" id="wpr_inv_t1_total"/></div>
+        <div class="form-group"><label>Type 1 Sold (Live)</label><input type="number" id="wpr_inv_t1_sold"/></div>
+        <div class="form-group"><label>Inventory Type 2</label><input type="text" id="wpr_inv_t2"/></div>
+        <div class="form-group"><label>Type 2 Total</label><input type="number" id="wpr_inv_t2_total"/></div>
+        <div class="form-group"><label>Type 2 Sold (Live)</label><input type="number" id="wpr_inv_t2_sold"/></div>
+      </div>
+      <div class="form-grid" style="margin-top:12px">
+        <div class="form-group"><label>Total Sanctioned Units</label><input type="number" id="wpr_total_sanctioned"/></div>
+        <div class="form-group"><label>Agreements Done</label><input type="number" id="wpr_agreements_done"/></div>
+        <div class="form-group"><label>Agreements Pending</label><input type="number" id="wpr_agreements_pending"/></div>
+        <div class="form-group"><label>Average APR Achieved</label><input type="text" id="wpr_avg_apr" placeholder="e.g. ₹6,200/sqft"/></div>
+        <div class="form-group"><label>Lifetime Bookings Done</label><input type="number" id="wpr_lifetime_bookings"/></div>
+        <div class="form-group"><label>Live Bookings till Date</label><input type="number" id="wpr_live_bookings"/></div>
+        <div class="form-group"><label>Total Cancellations</label><input type="number" id="wpr_cancellations"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group"><label>Cancellation Reasons (one per line)</label><textarea id="wpr_cancel_reasons" placeholder="Reason 1&#10;Reason 2..."></textarea></div>
+      <div class="form-group" style="margin-top:14px"><label>Inventory Way Forward</label><textarea id="wpr_inv_way_forward"></textarea></div>
+    </div>
+  </div>
+
+  <!-- Slide 13: Pending Agreements -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">📝</div>
+      <h3>Pending Agreements Status & Ageing</h3>
+      <span class="slide-ref">Slide 13</span>
+    </div>
+    <div class="section-card-body">
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>#</th><th>Customer Name</th><th>Unit No.</th><th>Amount Paid (₹)</th><th>Ageing (Days)</th><th>Sales Head Note</th><th>Target Agreement Date</th><th></th></tr></thead>
+          <tbody id="wpr_agreements_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addAgreementRow()">+ Add Customer</button>
+    </div>
+  </div>
+
+  <!-- Slide 14: Marketing Costs -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(108,138,255,.15)">💸</div>
+      <h3>Current Marketing Costs (Lifetime)</h3>
+      <span class="slide-ref">Slide 14</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Bookings Count</label><input type="number" id="wpr_mkt_bookings"/></div>
+        <div class="form-group"><label>Average Agreement Value (₹)</label><input type="number" id="wpr_avg_agreement"/></div>
+        <div class="form-group"><label>Digital Lead Generation (₹)</label><input type="number" id="wpr_mkt_digital_lead"/></div>
+        <div class="form-group"><label>Digital Visibility (₹)</label><input type="number" id="wpr_mkt_digital_vis"/></div>
+        <div class="form-group"><label>Hoarding (₹)</label><input type="number" id="wpr_mkt_hoarding"/></div>
+        <div class="form-group"><label>Wayboards (₹)</label><input type="number" id="wpr_mkt_wayboard"/></div>
+        <div class="form-group"><label>Society Activation (₹)</label><input type="number" id="wpr_mkt_society"/></div>
+        <div class="form-group"><label>Shoots Conducted (₹)</label><input type="number" id="wpr_mkt_shoots"/></div>
+        <div class="form-group"><label>Property Portal 99acres (₹)</label><input type="number" id="wpr_mkt_99acres"/></div>
+        <div class="form-group"><label>Leaflet (₹)</label><input type="number" id="wpr_mkt_leaflet"/></div>
+        <div class="form-group"><label>Influencer Charges (₹)</label><input type="number" id="wpr_mkt_influencer"/></div>
+        <div class="form-group"><label>Website Chatbot (₹)</label><input type="number" id="wpr_mkt_chatbot"/></div>
+        <div class="form-group"><label>FOS Incentive (₹)</label><input type="number" id="wpr_mkt_fos"/></div>
+        <div class="form-group"><label>CP Brokerage (₹)</label><input type="number" id="wpr_mkt_cp_broker"/></div>
+        <div class="form-group"><label>Referral Bonus (₹)</label><input type="number" id="wpr_mkt_referral"/></div>
+      </div>
+      <div class="divider"></div>
+      <div class="subsection-title">Bookings by Source</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Channel Partner</label><input type="number" id="wpr_src_cp"/></div>
+        <div class="form-group"><label>Reference</label><input type="number" id="wpr_src_ref"/></div>
+        <div class="form-group"><label>Walk-In</label><input type="number" id="wpr_src_walkin"/></div>
+        <div class="form-group"><label>Pre-sales</label><input type="number" id="wpr_src_ps"/></div>
+        <div class="form-group"><label>PS/CP Clash</label><input type="number" id="wpr_src_clash"/></div>
+        <div class="form-group"><label>Total</label><input type="number" id="wpr_src_total"/></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end tab-wpr -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 4: PPC REVIEW (XLSX)
+═══════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-ppc">
+
+  <!-- General Info -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(244,114,182,.15)">📋</div>
+      <h3>General Info</h3>
+      <span class="slide-ref">Sheet: General</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Campaign Name</label><input type="text" id="ppc_campaign_name"/></div>
+        <div class="form-group"><label>Account Manager</label><input type="text" id="ppc_account_manager"/></div>
+        <div class="form-group"><label>Platform(s)</label><input type="text" id="ppc_platform" placeholder="Facebook / Google / Both"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Qualification -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(244,114,182,.15)">🎯</div>
+      <h3>Lead Qualification</h3>
+      <span class="slide-ref">Qualification</span>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Campaign Objective</label><input type="text" id="ppc_objective" placeholder="Leads / Traffic / Engagement"/></div>
+        <div class="form-group"><label>Qualification Logic / Criteria</label><input type="text" id="ppc_qual_logic" placeholder="e.g. Lead Form Filled, Site Visit"/></div>
+        <div class="form-group"><label>% Qualified Leads</label><input type="text" id="ppc_qual_pct" placeholder="e.g. 34%"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Facebook -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(244,114,182,.15)">📘</div>
+      <h3>Facebook Optimisations</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid-2">
+        <div class="form-group"><label>Ad Set Level Changes (Bid/Budget/Targeting)</label><textarea id="ppc_fb_adset"></textarea></div>
+        <div class="form-group"><label>Ad Level Changes (Copy/Creative/CTA)</label><textarea id="ppc_fb_ad"></textarea></div>
+        <div class="form-group"><label>Learning Phase Status</label>
+          <select id="ppc_fb_learning"><option>Active</option><option>Limited</option><option>Completed</option></select>
+        </div>
+        <div class="form-group"><label>Frequency Trend</label><input type="text" id="ppc_fb_freq" placeholder="e.g. 2.3 → 2.8, increasing"/></div>
+        <div class="form-group"><label>CPL Trend</label><input type="text" id="ppc_fb_cpl" placeholder="e.g. ₹320 → ₹295, improving"/></div>
+        <div class="form-group"><label>Comments</label><textarea id="ppc_fb_comments"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(244,114,182,.15)">🔍</div>
+      <h3>Google Optimisations</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid-2">
+        <div class="form-group"><label>Campaign Type</label>
+          <select id="ppc_goog_type"><option>Search</option><option>Display</option><option>Performance Max</option><option>YouTube</option></select>
+        </div>
+        <div class="form-group"><label>Keyword / Ad Group Optimisations</label><textarea id="ppc_goog_keyword"></textarea></div>
+        <div class="form-group"><label>Negative Keywords Added</label><input type="text" id="ppc_goog_neg_kw" placeholder="e.g. rent, free, job"/></div>
+        <div class="form-group"><label>Ad Copy / Extension Updates</label><textarea id="ppc_goog_ad_copy"></textarea></div>
+        <div class="form-group"><label>Impression Share %</label><input type="text" id="ppc_goog_imp_share" placeholder="e.g. 64%"/></div>
+        <div class="form-group"><label>Comments</label><textarea id="ppc_goog_comments"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(244,114,182,.15)">💵</div>
+      <h3>Budget Updates</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Spent So Far (₹)</label><input type="number" id="ppc_spent"/></div>
+        <div class="form-group"><label>Remaining Budget (₹)</label><input type="number" id="ppc_remaining"/></div>
+        <div class="form-group"><label>Budget Change Made?</label><select id="ppc_budget_changed"><option>No</option><option>Yes</option></select></div>
+        <div class="form-group"><label>Reason for Budget Change</label><input type="text" id="ppc_budget_reason"/></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Creative Performance -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(244,114,182,.15)">🎨</div>
+      <h3>Creative Performance</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid-2">
+        <div class="form-group"><label>Top Performing Creatives</label><textarea id="ppc_top_creatives" placeholder="Creative name / description..."></textarea></div>
+        <div class="form-group"><label>Underperforming Creatives</label><textarea id="ppc_under_creatives"></textarea></div>
+        <div class="form-group"><label>Offers / Festive Ads Live?</label><select id="ppc_festive"><option>No</option><option>Yes</option></select></div>
+        <div class="form-group"><label>Actions Taken</label>
+          <select id="ppc_creative_action"><option>Continued</option><option>Paused</option><option>Replaced</option><option>Paused + Replaced</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Adcomm Check -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(244,114,182,.15)">✅</div>
+      <h3>Ad Compliance Check</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid-2">
+        <div class="form-group"><label>Ad Compliance Issues</label><textarea id="ppc_compliance_issues" placeholder="Disapproved ads, restricted content etc. Or 'None'..."></textarea></div>
+        <div class="form-group"><label>Actions Taken</label><textarea id="ppc_compliance_actions" placeholder="Steps taken to resolve..."></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remarketing -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(244,114,182,.15)">🔁</div>
+      <h3>Remarketing & Exclusions</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="form-grid-3">
+        <div class="form-group"><label>Remarketing List Updated?</label><select id="ppc_rmkt"><option>Yes</option><option>No</option></select></div>
+        <div class="form-group"><label>Unqualified Leads Excluded?</label><select id="ppc_excl_unqual"><option>Yes</option><option>No</option></select></div>
+        <div class="form-group"><label>CP List Excluded?</label><select id="ppc_excl_cp"><option>Yes</option><option>No</option></select></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Optimisations -->
+  <div class="section-card">
+    <div class="section-card-header">
+      <div class="icon" style="background:rgba(244,114,182,.15)">🛠️</div>
+      <h3>Detailed Optimisations Done This Week</h3>
+    </div>
+    <div class="section-card-body">
+      <div class="dyn-table-wrap">
+        <table class="dyn-table">
+          <thead><tr><th>#</th><th>Optimisation Description</th><th></th></tr></thead>
+          <tbody id="ppc_optim_body"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" onclick="addOptimRow()">+ Add Optimisation</button>
+    </div>
+  </div>
+
+</div><!-- end tab-ppc -->
+
+<!-- GENERATE BAR -->
+<div class="generate-bar" id="gen-bar">
+  <div class="gen-info">
+    Ready to generate: <strong id="gen-label">CP Agg Report</strong>
+    <span style="margin-left:8px;color:var(--text-muted)">→</span>
+    <strong id="gen-format" style="margin-left:8px">PPTX</strong>
+  </div>
+  <button class="generate-btn cp-btn" id="gen-btn" onclick="generateReport()">
+    <span id="gen-btn-icon">⬇</span>
+    <span id="gen-btn-text">Generate CP Agg Report</span>
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════
+// INIT DATA
+// ═══════════════════════════════════════
+
+const CP_METRICS_ROWS = [
+  {label:'MARKETING',section:true},
+  {label:'Total Spends with GST',id:'cp_m_total_spends'},
+  {label:'Lead Generation Spends',id:'cp_m_lead_spends'},
+  {label:'Branding Spends',id:'cp_m_brand_spends'},
+  {label:'LEADS',section:true},
+  {label:'Total Leads',id:'cp_m_leads'},
+  {label:'CPL',id:'cp_m_cpl'},
+  {label:'Qualified Leads',id:'cp_m_qualified'},
+  {label:'CPQL',id:'cp_m_cpql'},
+  {label:'PRESALES',section:true},
+  {label:'Presales SVS',id:'cp_m_ps_svs'},
+  {label:'Presales SVC',id:'cp_m_ps_svc'},
+  {label:'PHYSICAL VISITS',section:true},
+  {label:'Walkin Direct SVC',id:'cp_m_walkin_svc'},
+  {label:'CP Direct SVC',id:'cp_m_cp_svc'},
+  {label:'Total Physical SVC',id:'cp_m_total_svc'},
+  {label:'Revisits',id:'cp_m_revisits'},
+  {label:'BOOKINGS',section:true},
+  {label:'Digital Bookings',id:'cp_m_bk_digital'},
+  {label:'Direct Bookings',id:'cp_m_bk_direct'},
+  {label:'Reference Bookings',id:'cp_m_bk_ref'},
+  {label:'CP Bookings',id:'cp_m_bk_cp'},
+  {label:'Total 2BHK Bookings',id:'cp_m_total_2bhk'},
+  {label:'Total 1BHK Bookings',id:'cp_m_total_1bhk'},
+  {label:'Total Bookings',id:'cp_m_total_bookings'},
+];
+
+const WPR_METRICS_ROWS = [
+  {label:'MARKETING',section:true},
+  {label:'Total Spends',id:'wpr_m_total_spends'},
+  {label:'Lead Gen Spends',id:'wpr_m_lead_spends'},
+  {label:'Branding Spends',id:'wpr_m_brand_spends'},
+  {label:'LEADS',section:true},
+  {label:'Total Leads',id:'wpr_m_leads'},
+  {label:'CPL',id:'wpr_m_cpl'},
+  {label:'Qualified',id:'wpr_m_qualified'},
+  {label:'CPQL',id:'wpr_m_cpql'},
+  {label:'PRESALES',section:true},
+  {label:'Presales SVS',id:'wpr_m_ps_svs'},
+  {label:'Presales SVC',id:'wpr_m_ps_svc'},
+  {label:'PHYSICAL VISITS',section:true},
+  {label:'Walkin Direct SVC',id:'wpr_m_walkin'},
+  {label:'CP SVC',id:'wpr_m_cp_svc'},
+  {label:'CP/PS Clash',id:'wpr_m_clash'},
+  {label:'Total Physical SVC',id:'wpr_m_total_svc'},
+  {label:'Revisits',id:'wpr_m_revisits'},
+  {label:'BOOKINGS',section:true},
+  {label:'Token/Bookings Digital',id:'wpr_m_bk_digital'},
+  {label:'Token/Bookings Direct',id:'wpr_m_bk_direct'},
+  {label:'Token/Bookings CP',id:'wpr_m_bk_cp'},
+  {label:'Total Bookings',id:'wpr_m_total_bk'},
+  {label:'Total 2BHK Bookings',id:'wpr_m_total_2bhk'},
+  {label:'Total 3BHK Bookings',id:'wpr_m_total_3bhk'},
+  {label:'Agreements Done',id:'wpr_m_agreements'},
+];
+
+const LOST_REASONS = [
+  'Looking for Lower Budget','Location Mismatch','Possession Mismatch',
+  'Looking for Larger/Smaller Carpet','Postponed property buying',
+  'Not answering/responding','Booked with competitor','Loan Issue',
+  'Not interested','Vastu Issue'
+];
+
+function buildWeekTable(tbodyId, rows, weeks=5) {
+  const tbody = document.getElementById(tbodyId);
+  rows.forEach(row => {
+    const tr = document.createElement('tr');
+    if(row.section) {
+      tr.innerHTML = `<td class="section-row" colspan="${weeks+2}">${row.label}</td>`;
+    } else {
+      let cells = `<td class="row-label">${row.label}</td>`;
+      for(let w=1;w<=weeks;w++) cells += `<td><input type="text" id="${row.id}_w${w}" placeholder="0"></td>`;
+      cells += `<td><input type="text" id="${row.id}_total" placeholder="0"></td>`;
+      tr.innerHTML = cells;
+    }
+    tbody.appendChild(tr);
+  });
+}
+
+function buildWprWeekTable() {
+  const tbody = document.getElementById('wpr_metrics_body');
+  WPR_METRICS_ROWS.forEach(row => {
+    const tr = document.createElement('tr');
+    if(row.section) {
+      tr.innerHTML = `<td class="section-row" colspan="11">${row.label}</td>`;
+    } else {
+      let cells = `<td class="row-label">${row.label}</td>`;
+      for(let w=1;w<=4;w++) cells += `<td><input type="text" id="${row.id}_w${w}t" placeholder="0"></td><td><input type="text" id="${row.id}_w${w}a" placeholder="0"></td>`;
+      cells += `<td><input type="text" id="${row.id}_tot_t" placeholder="0"></td><td><input type="text" id="${row.id}_tot_a" placeholder="0"></td>`;
+      tr.innerHTML = cells;
+    }
+    tbody.appendChild(tr);
+  });
+}
+
+function buildLostTables() {
+  // Lost Weekly
+  const wb = document.getElementById('wpr_lost_weekly_body');
+  LOST_REASONS.forEach(r => {
+    const id = 'wlw_'+r.replace(/[^a-z]/gi,'_').toLowerCase();
+    wb.innerHTML += `<tr><td class="row-label">${r}</td>
+      <td><input type="text" id="${id}_ps" placeholder="0"></td>
+      <td><input type="text" id="${id}_walkin" placeholder="0"></td>
+      <td><input type="text" id="${id}_cp" placeholder="0"></td>
+      <td><input type="text" id="${id}_total" placeholder="0"></td></tr>`;
+  });
+  // Lost MTD
+  const mb = document.getElementById('wpr_lost_mtd_body');
+  LOST_REASONS.forEach(r => {
+    const id = 'wlm_'+r.replace(/[^a-z]/gi,'_').toLowerCase();
+    mb.innerHTML += `<tr><td class="row-label">${r}</td>
+      <td><input type="text" id="${id}_w1" placeholder="0"></td>
+      <td><input type="text" id="${id}_w2" placeholder="0"></td>
+      <td><input type="text" id="${id}_w3" placeholder="0"></td>
+      <td><input type="text" id="${id}_w4" placeholder="0"></td></tr>`;
+  });
+}
+
+// ═══════════════════════════════════════
+// DYNAMIC ROWS
+// ═══════════════════════════════════════
+function addRow(tbodyId, defaults) {
+  const tbody = document.getElementById(tbodyId);
+  const tr = document.createElement('tr');
+  let cells = defaults.map(d => `<td><input type="text" value="${d}"></td>`).join('');
+  cells += `<td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>`;
+  tr.innerHTML = cells;
+  tbody.appendChild(tr);
+}
+
+let agrCount = 0;
+function addAgreementRow() {
+  agrCount++;
+  const tbody = document.getElementById('wpr_agreements_body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="padding:6px 10px;color:var(--text-muted);font-size:12px">${agrCount}</td>
+    <td><input type="text" placeholder="Customer Name"></td>
+    <td><input type="text" placeholder="Unit No."></td>
+    <td><input type="text" placeholder="₹ Amount"></td>
+    <td><input type="text" placeholder="Days"></td>
+    <td><input type="text" placeholder="Note"></td>
+    <td><input type="text" placeholder="dd/mm/yyyy"></td>
+    <td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+let optimCount = 0;
+function addOptimRow() {
+  optimCount++;
+  const tbody = document.getElementById('ppc_optim_body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td style="padding:6px 10px;color:var(--text-muted);font-size:12px">${optimCount}</td>
+    <td><input type="text" placeholder="Describe the optimisation done..."></td>
+    <td><button class="del-btn" onclick="this.closest('tr').remove()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+// ═══════════════════════════════════════
+// IMAGE UPLOAD
+// ═══════════════════════════════════════
+function handleImageUpload(input, zoneId, hiddenId) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById(hiddenId).value = e.target.result;
+    document.getElementById(hiddenId+'_name').textContent = '✓ '+file.name;
+    const prev = document.getElementById(hiddenId+'_preview');
+    if(prev) { prev.src = e.target.result; prev.style.display='block'; }
+    document.getElementById(zoneId).classList.add('has-file');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════
+const TAB_META = {
+  cp:  { label:'CP Agg Report',         format:'PPTX', btnClass:'cp-btn' },
+  ps:  { label:'Pre-sales Review',      format:'PPTX', btnClass:'ps-btn' },
+  wpr: { label:'Weekly Project Review', format:'PPTX', btnClass:'wpr-btn' },
+  ppc: { label:'PPC Review',            format:'XLSX', btnClass:'ppc-btn' },
+};
+let currentTab = 'cp';
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    currentTab = btn.dataset.tab;
+    document.getElementById('tab-'+currentTab).classList.add('active');
+    updateGenBar();
+  });
+});
+
+function updateGenBar() {
+  const meta = TAB_META[currentTab];
+  document.getElementById('gen-label').textContent = meta.label;
+  document.getElementById('gen-format').textContent = meta.format;
+  const btn = document.getElementById('gen-btn');
+  btn.className = 'generate-btn ' + meta.btnClass;
+  document.getElementById('gen-btn-text').textContent = 'Generate '+meta.label;
+}
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show '+type;
+  setTimeout(()=>t.className='toast', 3000);
+}
+
+// ═══════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════
+function v(id) { const el=document.getElementById(id); return el ? el.value.trim() : ''; }
+function g_project() { return v('g_project') || 'Project Name'; }
+function g_week() { return v('g_week_range') || 'Week Range'; }
+function g_month() { return v('g_month') || 'Month'; }
+
+function tableRows(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if(!tbody) return [];
+  return Array.from(tbody.querySelectorAll('tr')).map(tr =>
+    Array.from(tr.querySelectorAll('input[type=text],input[type=number]')).map(i=>i.value.trim())
+  );
+}
+
+// ═══════════════════════════════════════
+// PPTX HELPERS
+// ═══════════════════════════════════════
+const SLIDE_W = 13.33, SLIDE_H = 7.5;
+const PALETTE = {
+  cp:  { primary:'#F59E0B', light:'#FEF3C7', dark:'#92400E', bg:'#0F1117', text:'#E8EAF6' },
+  ps:  { primary:'#34D399', light:'#D1FAE5', dark:'#065F46', bg:'#0F1117', text:'#E8EAF6' },
+  wpr: { primary:'#6C8AFF', light:'#EEF2FF', dark:'#1E40AF', bg:'#0F1117', text:'#E8EAF6' },
+};
+
+function newPptx(tab) {
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+  pptx.author = 'WeeklyDash';
+  pptx.subject = g_project();
+  return pptx;
+}
+
+function addCoverSlide(pptx, title, subtitle, col) {
+  const slide = pptx.addSlide();
+  slide.addShape(pptx.ShapeType.rect, {x:0,y:0,w:SLIDE_W,h:SLIDE_H,fill:{color:'111827'}});
+  slide.addShape(pptx.ShapeType.rect, {x:0,y:0,w:SLIDE_W,h:1.6,fill:{color:'1A1D27'}});
+  slide.addShape(pptx.ShapeType.rect, {x:0,y:5.9,w:SLIDE_W,h:1.6,fill:{color:'1A1D27'}});
+  slide.addShape(pptx.ShapeType.rect, {x:0.4,y:2.1,w:0.12,h:3.2,fill:{color:col.replace('#','')}});
+  slide.addText(title, {x:0.7,y:2.4,w:SLIDE_W-1.2,h:1.4,fontSize:36,bold:true,color:'E8EAF6',fontFace:'Calibri'});
+  slide.addText(subtitle, {x:0.7,y:3.9,w:SLIDE_W-1.2,h:0.7,fontSize:18,color:'7B82A8',fontFace:'Calibri'});
+  slide.addText(g_project(), {x:0.7,y:0.5,w:SLIDE_W-1.4,h:0.7,fontSize:14,color:'7B82A8',fontFace:'Calibri'});
+  slide.addText(g_week(), {x:0,y:0.5,w:SLIDE_W-0.4,h:0.7,fontSize:12,color:'7B82A8',align:'right',fontFace:'Calibri'});
+  return slide;
+}
+
+function addThankYouSlide(pptx, col) {
+  const slide = pptx.addSlide();
+  slide.addShape(pptx.ShapeType.rect, {x:0,y:0,w:SLIDE_W,h:SLIDE_H,fill:{color:'111827'}});
+  slide.addText('Thank You', {x:1,y:2.8,w:SLIDE_W-2,h:1.5,fontSize:48,bold:true,color:col.replace('#',''),align:'center',fontFace:'Calibri'});
+  slide.addText(g_project()+' · '+g_week(), {x:1,y:4.5,w:SLIDE_W-2,h:0.6,fontSize:14,color:'7B82A8',align:'center',fontFace:'Calibri'});
+}
+
+function slideHeader(slide, title, col, pptx) {
+  slide.addShape(pptx.ShapeType.rect, {x:0,y:0,w:SLIDE_W,h:0.85,fill:{color:'1A1D27'}});
+  slide.addShape(pptx.ShapeType.rect, {x:0,y:0.85,w:SLIDE_W,h:SLIDE_H-0.85,fill:{color:'111827'}});
+  slide.addText(title, {x:0.5,y:0.15,w:SLIDE_W-1,h:0.55,fontSize:18,bold:true,color:'E8EAF6',fontFace:'Calibri'});
+  slide.addText(g_project()+' · '+g_week(), {x:0,y:0.15,w:SLIDE_W-0.5,h:0.55,fontSize:11,color:'7B82A8',align:'right',fontFace:'Calibri'});
+  slide.addShape(pptx.ShapeType.rect, {x:0,y:0.82,w:SLIDE_W,h:0.04,fill:{color:col.replace('#','')}});
+}
+
+function addSimpleTextSlide(pptx, title, bodyText, col) {
+  const slide = pptx.addSlide();
+  slideHeader(slide, title, col, pptx);
+  const lines = bodyText.split('\n').filter(l=>l.trim()).map(l=>({text:l,options:{breakLine:true}}));
+  slide.addText(lines.length?lines:[{text:'—'}], {x:0.5,y:1.1,w:SLIDE_W-1,h:SLIDE_H-1.3,fontSize:13,color:'E8EAF6',fontFace:'Calibri',valign:'top',wrap:true});
+  return slide;
+}
+
+function addTableSlide(pptx, title, headers, rows, col) {
+  const slide = pptx.addSlide();
+  slideHeader(slide, title, col, pptx);
+  if(!rows.length) {
+    slide.addText('No data entered.', {x:0.5,y:2,w:SLIDE_W-1,h:1,fontSize:14,color:'7B82A8'});
+    return slide;
+  }
+  const tableData = [
+    headers.map(h => ({text:h, options:{bold:true, color:'E8EAF6', fill:{color:'22263A'}, align:'center', fontSize:11}})),
+    ...rows.map((row,ri) => row.map(cell => ({text:String(cell||''), options:{color:'E8EAF6', fill:{color:ri%2===0?'1A1D27':'111827'}, fontSize:11}})))
+  ];
+  slide.addTable(tableData, {x:0.4,y:1.05,w:SLIDE_W-0.8,colW:null,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+  return slide;
+}
+
+function addImageSlide(pptx, title, imgData, caption, col) {
+  const slide = pptx.addSlide();
+  slideHeader(slide, title, col, pptx);
+  if(imgData && imgData.startsWith('data:image')) {
+    const mtype = imgData.split(';')[0].split(':')[1];
+    const b64 = imgData.split(',')[1];
+    slide.addImage({data:`${mtype};base64,${b64}`, x:0.5,y:1.1,w:SLIDE_W-1,h:5.8});
+  } else {
+    slide.addShape(pptx.ShapeType.rect, {x:0.5,y:1.2,w:SLIDE_W-1,h:5.5,fill:{color:'22263A'},line:{color:'2E3350',pt:1}});
+    slide.addText('[ Screenshot / Image Placeholder ]', {x:0.5,y:3.5,w:SLIDE_W-1,h:1,fontSize:16,color:'7B82A8',align:'center'});
+    if(caption) slide.addText(caption,{x:0.5,y:4.6,w:SLIDE_W-1,h:0.5,fontSize:11,color:'7B82A8',align:'center'});
+  }
+  return slide;
+}
+
+// ═══════════════════════════════════════
+// GENERATE: CP PPTX
+// ═══════════════════════════════════════
+async function generateCP() {
+  const pptx = newPptx('cp');
+  const col = '#F59E0B';
+
+  // Slide 1: Cover
+  addCoverSlide(pptx, 'Channel Partner Weekly Review Report', g_week(), col);
+
+  // Slide 2: Weekly Metrics Table
+  {
+    const slide = pptx.addSlide();
+    slideHeader(slide, 'Weekly Aggregated Metrics – '+g_month(), col, pptx);
+    const headers = ['Metric','Week 1','Week 2','Week 3','Week 4','Week 5','Total'];
+    const rows = [];
+    CP_METRICS_ROWS.forEach(row => {
+      if(row.section) {
+        rows.push([{text:row.label,options:{bold:true,color:col.replace('#',''),fill:{color:'22263A'},colspan:7}},...Array(6).fill(null)].filter(Boolean));
+      } else {
+        const vals = [row.label];
+        for(let w=1;w<=5;w++) vals.push(v(`${row.id}_w${w}`)||'—');
+        vals.push(v(`${row.id}_total`)||'—');
+        rows.push(vals);
+      }
+    });
+    const tableData = [
+      headers.map(h=>({text:h,options:{bold:true,color:'E8EAF6',fill:{color:'22263A'},fontSize:10,align:'center'}})),
+      ...rows.map((row,ri) => {
+        if(row.length===1) return [{text:row[0].text,options:{...row[0].options,fontSize:10,colSpan:7}}];
+        return row.map((cell,ci)=>({text:String(cell||''),options:{color:ci===0?'7B82A8':'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:10,align:ci===0?'left':'center'}}));
+      })
+    ];
+    slide.addTable(tableData, {x:0.3,y:1.05,w:SLIDE_W-0.6,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+  }
+
+  // Slide 3: Last Week Visits
+  {
+    const target = v('cp_visit_target')||'—';
+    const achieved = v('cp_visit_achieved')||'—';
+    const body = `Visits Targeted: ${target}\nVisits Achieved: ${achieved}\n\nUnqualification Reasons: ${v('cp_unqual_reasons')||'—'}\n\nBudget Observations: ${v('cp_budget_obs')||'—'}\n\nWeekend Target: ${v('cp_weekend_target')||'—'}\nOverall Weekly Target: ${v('cp_weekly_target_range')||'—'}`;
+    addSimpleTextSlide(pptx, 'Last Week Visits – Target vs Achieved', body, col);
+  }
+
+  // Slide 4: Weekly Active CPs
+  addTableSlide(pptx, 'Weekly Active CPs', ['CP Name','CP Firm','Weekly Visits'], tableRows('cp_weekly_active_body'), col);
+
+  // Slide 5: Monthly Active CPs
+  {
+    const rows = tableRows('cp_monthly_active_body');
+    const slide = addTableSlide(pptx, 'Monthly Active CPs', ['CP Name','CP Firm','Monthly Visits'], rows, col);
+    const summary = `Monthly Visit Target: ${v('cp_month_target')||'—'}  |  Achieved: ${v('cp_month_achieved')||'—'}  |  2BHK Bookings: ${v('cp_2bhk_bookings')||'—'}  |  1BHK Bookings: ${v('cp_1bhk_bookings')||'—'}`;
+    slide.addText(summary, {x:0.4,y:SLIDE_H-0.7,w:SLIDE_W-0.8,h:0.5,fontSize:11,color:'7B82A8',fontFace:'Calibri'});
+  }
+
+  // Slide 6: Newly Activated CPs
+  {
+    const firms = v('cp_new_firms').split(',').map(s=>s.trim()).filter(Boolean);
+    addSimpleTextSlide(pptx, 'Newly Activated CPs', firms.length?firms.map((f,i)=>`${i+1}. ${f}`).join('\n'):'No newly activated CPs this week.', col);
+  }
+
+  // Slide 7: Active Firms
+  {
+    const firms = v('cp_active_firms').split(/[\n,]/).map(s=>s.trim()).filter(Boolean);
+    const slide = pptx.addSlide();
+    slideHeader(slide, 'Active Firms', col, pptx);
+    if(firms.length) {
+      // Multi-column layout
+      const cols = 4;
+      const perCol = Math.ceil(firms.length/cols);
+      for(let c=0;c<cols;c++) {
+        const chunk = firms.slice(c*perCol, (c+1)*perCol);
+        const txt = chunk.map((f,i)=>({text:`• ${f}`,options:{breakLine:true}}));
+        slide.addText(txt, {x:0.4+c*3.2,y:1.1,w:3,h:SLIDE_H-1.3,fontSize:10,color:'E8EAF6',fontFace:'Calibri',valign:'top'});
+      }
+    } else {
+      slide.addText('No active firms listed.', {x:0.5,y:2,w:SLIDE_W-1,h:1,fontSize:14,color:'7B82A8'});
+    }
+  }
+
+  // Slide 8: Commitment Sheet
+  addImageSlide(pptx, 'Friday Commitment Sheet – '+g_week(), v('cp_commitment_img'), 'Attach commitment sheet here', col);
+
+  // Slide 9: Commitment vs Achieved
+  {
+    const body = `Committed CP Visits: ${v('cp_committed')||'—'}\nAchieved: ${v('cp_comm_achieved')||'—'}`;
+    addSimpleTextSlide(pptx, 'Commitment vs Achieved (Last Week)', body, col);
+  }
+
+  // Slide 10: Top Performing CPs
+  addTableSlide(pptx, 'Top Performing CPs (Visits + Bookings)', ['CP Company','CP Name','Visits','Bookings'], tableRows('cp_top_body'), col);
+
+  // Slide 11: Outstanding Bills
+  {
+    const rows = tableRows('cp_bills_body');
+    if(rows.length) {
+      addTableSlide(pptx, 'CP Outstanding Bills Ageing', ['CP Name','Amount (₹)','Ageing (Days)','Remarks'], rows, col);
+    } else {
+      addSimpleTextSlide(pptx, 'CP Outstanding Bills Ageing', 'No outstanding bills applicable this week.', col);
+    }
+  }
+
+  // Slide 12: Outreach Strategy
+  addSimpleTextSlide(pptx, 'Outreach Strategy for Next Week', v('cp_outreach')||'Strategy to be discussed and added.', col);
+
+  // Slide 13: Communication Plan
+  addSimpleTextSlide(pptx, 'Communication Plan', v('cp_comm_plan')||'Communication plan to be added.', col);
+
+  // Slide 14: Thank You
+  addThankYouSlide(pptx, col);
+
+  await pptx.writeFile({fileName:`CP_Weekly_Report_${g_project().replace(/\s+/g,'_')}_${g_week().replace(/\s+/g,'_')}.pptx`});
+}
+
+// ═══════════════════════════════════════
+// GENERATE: PRE-SALES PPTX
+// ═══════════════════════════════════════
+async function generatePS() {
+  const pptx = newPptx('ps');
+  const col = '#34D399';
+
+  addCoverSlide(pptx, 'Pre-Sales Review – Weekly Report', g_week(), col);
+
+  // Slide 2: Performance
+  {
+    const slide = pptx.addSlide();
+    slideHeader(slide, 'Pre-Sales Performance', col, pptx);
+    const metrics = [
+      ['Metric','Value','Target'],
+      ['Total Leads Received (Month)', v('ps_total_leads_month')||'—','—'],
+      ['Leads Received Last Week', v('ps_leads_week')||'—','—'],
+      ['Qualified Leads Last Week', v('ps_qualified_week')||'—','—'],
+      ['Site Visits Scheduled (Last Week)', v('ps_svs_week')||'—','—'],
+      ['Site Visits Conducted (Last Week)', v('ps_svc_week')||'—','—'],
+      ['Lead to SVC Ratio (Month)', v('ps_lead_svc_ratio')||'—','10%'],
+      ['Avg Daily Call Attempts (7-day)', v('ps_daily_calls')||'—','200'],
+    ];
+    const tableData = metrics.map((row,ri)=>row.map((cell,ci)=>({
+      text:String(cell),options:{bold:ri===0,color:ri===0?'E8EAF6':ci===0?'7B82A8':'E8EAF6',fill:{color:ri===0?'22263A':ri%2===0?'1A1D27':'111827'},fontSize:11,align:ci===0?'left':'center'}
+    })));
+    slide.addTable(tableData,{x:0.4,y:1.05,w:9,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+
+    // Bookings box
+    slide.addShape(pptx.ShapeType.rect,{x:10,y:1.1,w:3,h:2.2,fill:{color:'22263A'},line:{color:'2E3350',pt:1},rounding:0.1});
+    slide.addText('Bookings Attributed',{x:10,y:1.2,w:3,h:0.4,fontSize:10,bold:true,color:'7B82A8',align:'center',fontFace:'Calibri'});
+    slide.addText(`PS 1: ${v('ps_p1_bookings')||'0'}`,{x:10,y:1.7,w:3,h:0.4,fontSize:13,color:'E8EAF6',align:'center',fontFace:'Calibri'});
+    slide.addText(`PS 2: ${v('ps_p2_bookings')||'0'}`,{x:10,y:2.1,w:3,h:0.4,fontSize:13,color:'E8EAF6',align:'center',fontFace:'Calibri'});
+    slide.addText(`Total: ${v('ps_total_bookings')||'0'}`,{x:10,y:2.6,w:3,h:0.5,fontSize:18,bold:true,color:col.replace('#',''),align:'center',fontFace:'Calibri'});
+
+    const inf = v('ps_inferences');
+    if(inf) slide.addText('Inferences: '+inf,{x:0.4,y:4.4,w:SLIDE_W-0.8,h:1.2,fontSize:11,color:'7B82A8',fontFace:'Calibri',wrap:true});
+
+    // Not conducted table
+    const ncRows = tableRows('ps_not_conducted_body');
+    slide.addText(`CP Visit Clashes: ${v('ps_cp_clash')||'0'}`,{x:0.4,y:3.7,w:5,h:0.4,fontSize:11,color:'7B82A8',fontFace:'Calibri'});
+    if(ncRows.length) {
+      slide.addText('Leads Scheduled but Not Conducted:',{x:0.4,y:5.7,w:SLIDE_W-0.8,h:0.3,fontSize:10,bold:true,color:'7B82A8',fontFace:'Calibri'});
+      const ncData = [
+        [{text:'Lead Name',options:{bold:true,color:'E8EAF6',fill:{color:'22263A'},fontSize:9}},{text:'Remark',options:{bold:true,color:'E8EAF6',fill:{color:'22263A'},fontSize:9}}],
+        ...ncRows.map((r,ri)=>[{text:r[0]||'',options:{color:'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:9}},{text:r[1]||'',options:{color:'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:9}}])
+      ];
+      slide.addTable(ncData,{x:0.4,y:6.0,w:SLIDE_W-0.8,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+    }
+  }
+
+  // Slide 3: Unqualification
+  {
+    const body = 'INFERENCES:\n'+v('ps_unqual_inferences')+'\n\nMITIGATION MEASURES:\n'+v('ps_mitigation');
+    addSimpleTextSlide(pptx, 'Lead Unqualification Reasons & Top Funnel Stats', body, col);
+  }
+
+  // Slide 4: Call Logs
+  {
+    const slide = pptx.addSlide();
+    slideHeader(slide, 'Call Logs Audit', col, pptx);
+    slide.addText('Screenshots of online calls:', {x:0.5,y:1.1,w:SLIDE_W-1,h:0.4,fontSize:12,color:'7B82A8',fontFace:'Calibri'});
+    const imgs = [v('ps_call_img_1'), v('ps_call_img_2')];
+    imgs.forEach((img,i) => {
+      const x = 0.4 + i * 6.5;
+      if(img && img.startsWith('data:image')) {
+        const mtype = img.split(';')[0].split(':')[1];
+        const b64 = img.split(',')[1];
+        slide.addImage({data:`${mtype};base64,${b64}`, x, y:1.6, w:6.2, h:5.5});
+      } else {
+        slide.addShape(pptx.ShapeType.rect,{x,y:1.6,w:6.2,h:5.5,fill:{color:'22263A'},line:{color:'2E3350',pt:1}});
+        slide.addText(`[ Call Log Screenshot ${i+1} ]`,{x,y:4.0,w:6.2,h:0.7,fontSize:13,color:'7B82A8',align:'center',fontFace:'Calibri'});
+      }
+    });
+  }
+
+  // Slide 5: Visit Lineups
+  {
+    const slide = pptx.addSlide();
+    slideHeader(slide, 'Visit Lineups Received (Kylas)', col, pptx);
+    const cnt = v('ps_visit_lineup_count');
+    if(cnt) slide.addText(`Total Visits Lined Up: ${cnt}`, {x:0.5,y:1.1,w:6,h:0.4,fontSize:14,bold:true,color:col.replace('#',''),fontFace:'Calibri'});
+    const imgs = [v('ps_kylas_img_1'), v('ps_kylas_img_2')];
+    imgs.forEach((img,i) => {
+      const x = 0.4 + i * 6.5;
+      if(img && img.startsWith('data:image')) {
+        const mtype = img.split(';')[0].split(':')[1];
+        const b64 = img.split(',')[1];
+        slide.addImage({data:`${mtype};base64,${b64}`, x, y:1.6, w:6.2, h:5.5});
+      } else {
+        slide.addShape(pptx.ShapeType.rect,{x,y:1.6,w:6.2,h:5.5,fill:{color:'22263A'},line:{color:'2E3350',pt:1}});
+        slide.addText(`[ Kylas Screenshot ${i+1} ]`,{x,y:4.0,w:6.2,h:0.7,fontSize:13,color:'7B82A8',align:'center',fontFace:'Calibri'});
+      }
+    });
+  }
+
+  // Slide 6: Lead Integration
+  {
+    const body = `Leads from Campaign: ${v('ps_campaign_leads')||'—'}\nLeads Assigned to Pre-sales: ${v('ps_assigned_leads')||'—'}\n\nMismatch / Errors:\n${v('ps_lead_errors')||'No mismatch found.'}`;
+    addSimpleTextSlide(pptx, 'Lead Integration Check', body, col);
+  }
+
+  // Slide 7: Nurturing
+  {
+    const body = `Nurturing Content Being Shared:\n${v('ps_nurturing_content')||'—'}\n\nOffer Changes / Updates:\n${v('ps_offer_changes')||'None'}`;
+    addSimpleTextSlide(pptx, 'Nurturing Check', body, col);
+  }
+
+  addThankYouSlide(pptx, col);
+  await pptx.writeFile({fileName:`PreSales_Review_${g_project().replace(/\s+/g,'_')}_${g_week().replace(/\s+/g,'_')}.pptx`});
+}
+
+// ═══════════════════════════════════════
+// GENERATE: WPR PPTX
+// ═══════════════════════════════════════
+async function generateWPR() {
+  const pptx = newPptx('wpr');
+  const col = '#6C8AFF';
+
+  addCoverSlide(pptx, 'Weekly Review Deck – Mandate Project', g_week(), col);
+
+  // Slide 2: Target vs Achieved
+  {
+    const slide = pptx.addSlide();
+    slideHeader(slide, 'Target vs Achieved – '+g_month(), col, pptx);
+    const headers = ['Metric','W1 Tgt','W1 Ach','W2 Tgt','W2 Ach','W3 Tgt','W3 Ach','W4 Tgt','W4 Ach','Tot Tgt','Tot Ach'];
+    const rows = [];
+    WPR_METRICS_ROWS.forEach(row => {
+      if(row.section) {
+        rows.push([{type:'section', label:row.label}]);
+      } else {
+        const vals = [row.label];
+        for(let w=1;w<=4;w++) { vals.push(v(`${row.id}_w${w}t`)||'—'); vals.push(v(`${row.id}_w${w}a`)||'—'); }
+        vals.push(v(`${row.id}_tot_t`)||'—'); vals.push(v(`${row.id}_tot_a`)||'—');
+        rows.push(vals);
+      }
+    });
+    const tableData = [
+      headers.map(h=>({text:h,options:{bold:true,color:'E8EAF6',fill:{color:'22263A'},fontSize:8,align:'center'}})),
+      ...rows.map((row,ri) => {
+        if(row[0]&&row[0].type==='section') return [{text:row[0].label,options:{bold:true,color:col.replace('#',''),fill:{color:'22263A'},fontSize:9,colSpan:11}}];
+        return row.map((cell,ci)=>({text:String(cell||''),options:{color:ci===0?'7B82A8':'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:8,align:ci===0?'left':'center'}}));
+      })
+    ];
+    slide.addTable(tableData,{x:0.2,y:1.0,w:SLIDE_W-0.4,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+  }
+
+  // Slide 3: Unqualification
+  addSimpleTextSlide(pptx,'Lead Unqualification Reasons & Top Funnel Stats',
+    'INFERENCES:\n'+v('wpr_unqual_inferences')+'\n\nMITIGATION MEASURES:\n'+v('wpr_mitigation'), col);
+
+  // Slide 4: Pre-Sales Performance
+  {
+    const slide = pptx.addSlide();
+    slideHeader(slide,'Pre-Sales Performance',col,pptx);
+    const metrics=[
+      ['Metric','Value','Target'],
+      ['Total Leads (Month)',v('wpr_ps_leads_month')||'—','—'],
+      ['Leads Last Week',v('wpr_ps_leads_week')||'—','—'],
+      ['Qualified Last Week',v('wpr_ps_qualified_week')||'—','—'],
+      ['SVS (Last Week)',v('wpr_ps_svs_week')||'—','—'],
+      ['SVC (Last Week)',v('wpr_ps_svc_week')||'—','—'],
+      ['Lead→SVC Ratio',v('wpr_ps_ratio')||'—','10%'],
+      ['Avg Daily Calls',v('wpr_ps_daily_calls')||'—','200'],
+    ];
+    const td=metrics.map((row,ri)=>row.map((cell,ci)=>({text:String(cell),options:{bold:ri===0,color:ri===0?'E8EAF6':ci===0?'7B82A8':'E8EAF6',fill:{color:ri===0?'22263A':ri%2===0?'1A1D27':'111827'},fontSize:11,align:ci===0?'left':'center'}})));
+    slide.addTable(td,{x:0.4,y:1.05,w:9,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+    slide.addShape(pptx.ShapeType.rect,{x:10,y:1.1,w:3,h:2.2,fill:{color:'22263A'},line:{color:'2E3350',pt:1}});
+    slide.addText('Bookings',{x:10,y:1.2,w:3,h:0.4,fontSize:10,bold:true,color:'7B82A8',align:'center',fontFace:'Calibri'});
+    slide.addText(`PS1: ${v('wpr_ps1_bookings')||'0'}  PS2: ${v('wpr_ps2_bookings')||'0'}`,{x:10,y:1.8,w:3,h:0.4,fontSize:12,color:'E8EAF6',align:'center',fontFace:'Calibri'});
+    slide.addText(`Total: ${v('wpr_ps_total_bookings')||'0'}`,{x:10,y:2.4,w:3,h:0.6,fontSize:20,bold:true,color:col.replace('#',''),align:'center',fontFace:'Calibri'});
+    const inf=v('wpr_ps_inferences');
+    if(inf) slide.addText('Inferences: '+inf,{x:0.4,y:4.4,w:SLIDE_W-0.8,h:1.2,fontSize:11,color:'7B82A8',fontFace:'Calibri',wrap:true});
+    const ncRows=tableRows('wpr_not_conducted_body');
+    if(ncRows.length){
+      const ncData=[
+        [{text:'Lead',options:{bold:true,color:'E8EAF6',fill:{color:'22263A'},fontSize:9}},{text:'Remark',options:{bold:true,color:'E8EAF6',fill:{color:'22263A'},fontSize:9}}],
+        ...ncRows.map((r,ri)=>[{text:r[0]||'',options:{color:'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:9}},{text:r[1]||'',options:{color:'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:9}}])
+      ];
+      slide.addText('Leads Scheduled but Not Conducted:',{x:0.4,y:5.7,w:8,h:0.3,fontSize:10,bold:true,color:'7B82A8',fontFace:'Calibri'});
+      slide.addTable(ncData,{x:0.4,y:6.05,w:8,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+    }
+  }
+
+  // Slide 5: Sales Weekly
+  addTableSlide(pptx,'Sales Performance Weekly',['Salesperson','Visits','Hot','Cold','Lost','Bookings','Revisit Target'],tableRows('wpr_sales_body'),col);
+
+  // Slide 6: Revisit Review
+  addTableSlide(pptx,'Lead-by-Lead Revisit Review',['Lead Name','Remark','Status'],tableRows('wpr_revisit_body'),col);
+
+  // Slide 7: Sales MTD
+  addTableSlide(pptx,'Sales Performance – Month Overview',['Salesperson','Visits MTD','Revisits MTD','Bookings MTD','Lost MTD','Conversion %'],tableRows('wpr_sales_mtd_body'),col);
+
+  // Slide 8: Inventory & Budget
+  {
+    const slide=pptx.addSlide();
+    slideHeader(slide,'Inventory & Budget-wise Visits (MTD)',col,pptx);
+    const i1=v('wpr_inv1_name')||'Type 1', i2=v('wpr_inv2_name')||'Type 2', i3=v('wpr_inv3_name')||'Type 3';
+    const invRows=tableRows('wpr_inv_body');
+    if(invRows.length){
+      const td=[
+        [['Source',i1,i2,i3,'Total'].map(h=>({text:h,options:{bold:true,color:'E8EAF6',fill:{color:'22263A'},fontSize:11,align:'center'}}))],
+        ...invRows.map((r,ri)=>r.map((cell,ci)=>({text:String(cell||''),options:{color:ci===0?'7B82A8':'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:11,align:ci===0?'left':'center'}})))
+      ].flat();
+      slide.addTable(td,{x:0.4,y:1.1,w:7,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+    }
+    const budgetObs=v('wpr_budget_obs');
+    if(budgetObs) slide.addText('Budget Ranges:\n'+budgetObs,{x:8,y:1.1,w:5,h:4,fontSize:11,color:'7B82A8',fontFace:'Calibri',wrap:true,valign:'top'});
+    const inf=v('wpr_inv_inferences');
+    if(inf) slide.addText('Inferences: '+inf,{x:0.4,y:SLIDE_H-1.2,w:SLIDE_W-0.8,h:0.8,fontSize:11,color:'7B82A8',fontFace:'Calibri',wrap:true});
+  }
+
+  // Slide 9: Lost Weekly
+  {
+    const slide=pptx.addSlide();
+    slideHeader(slide,'Lost Visits – Source-wise Bifurcation (Weekly)',col,pptx);
+    const headers=['Lost Reason','Pre-sales SVC','Walkin Direct','CP SVC','Total'];
+    const rows=LOST_REASONS.map(r=>{
+      const id='wlw_'+r.replace(/[^a-z]/gi,'_').toLowerCase();
+      return [r,v(`${id}_ps`)||'0',v(`${id}_walkin`)||'0',v(`${id}_cp`)||'0',v(`${id}_total`)||'0'];
+    });
+    const td=[
+      headers.map(h=>({text:h,options:{bold:true,color:'E8EAF6',fill:{color:'22263A'},fontSize:10,align:'center'}})),
+      ...rows.map((row,ri)=>row.map((cell,ci)=>({text:String(cell),options:{color:ci===0?'7B82A8':'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:10,align:ci===0?'left':'center'}})))
+    ];
+    slide.addTable(td,{x:0.4,y:1.05,w:SLIDE_W-0.8,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+    const inf=v('wpr_lost_weekly_inferences');
+    if(inf) slide.addText('Inferences: '+inf,{x:0.4,y:SLIDE_H-0.7,w:SLIDE_W-0.8,h:0.5,fontSize:10,color:'7B82A8',fontFace:'Calibri'});
+  }
+
+  // Slide 10: Lost MTD
+  {
+    const slide=pptx.addSlide();
+    slideHeader(slide,'Lost Reasons Trend – Month till Date',col,pptx);
+    const headers=['Lost Reason','Week 1','Week 2','Week 3','Week 4'];
+    const rows=LOST_REASONS.map(r=>{
+      const id='wlm_'+r.replace(/[^a-z]/gi,'_').toLowerCase();
+      return [r,v(`${id}_w1`)||'0',v(`${id}_w2`)||'0',v(`${id}_w3`)||'0',v(`${id}_w4`)||'0'];
+    });
+    const td=[
+      headers.map(h=>({text:h,options:{bold:true,color:'E8EAF6',fill:{color:'22263A'},fontSize:10,align:'center'}})),
+      ...rows.map((row,ri)=>row.map((cell,ci)=>({text:String(cell),options:{color:ci===0?'7B82A8':'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:10,align:ci===0?'left':'center'}})))
+    ];
+    slide.addTable(td,{x:0.4,y:1.05,w:SLIDE_W-0.8,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+    const inf=v('wpr_lost_mtd_inferences');
+    if(inf) slide.addText('Inferences: '+inf,{x:0.4,y:SLIDE_H-0.7,w:SLIDE_W-0.8,h:0.5,fontSize:10,color:'7B82A8',fontFace:'Calibri'});
+  }
+
+  // Slide 11: Way Forward
+  addSimpleTextSlide(pptx,'Way Forward & MoM',v('wpr_way_forward')||'To be populated during review.',col);
+
+  // Slide 12: Live Inventory
+  {
+    const slide=pptx.addSlide();
+    slideHeader(slide,'Live Inventory Status (updated till date)',col,pptx);
+    const t1=v('wpr_inv_t1')||'Type 1', t2=v('wpr_inv_t2')||'Type 2';
+    const statsLeft=[
+      [`${t1} Total Units`, v('wpr_inv_t1_total')||'—'],
+      [`${t1} Sold (Live)`, v('wpr_inv_t1_sold')||'—'],
+      [`${t2} Total Units`, v('wpr_inv_t2_total')||'—'],
+      [`${t2} Sold (Live)`, v('wpr_inv_t2_sold')||'—'],
+      ['Total Sanctioned', v('wpr_total_sanctioned')||'—'],
+      ['Agreements Done', v('wpr_agreements_done')||'—'],
+      ['Agreements Pending', v('wpr_agreements_pending')||'—'],
+      ['Average APR', v('wpr_avg_apr')||'—'],
+    ];
+    const statsRight=[
+      ['Lifetime Bookings', v('wpr_lifetime_bookings')||'—'],
+      ['Live Bookings till Date', v('wpr_live_bookings')||'—'],
+      ['Total Cancellations', v('wpr_cancellations')||'—'],
+    ];
+    const buildStatTd=stats=>stats.map((s,ri)=>
+      [{text:s[0],options:{color:'7B82A8',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:11}},{text:s[1],options:{bold:true,color:'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:11,align:'right'}}]
+    );
+    slide.addTable(buildStatTd(statsLeft),{x:0.4,y:1.1,w:6,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+    slide.addTable(buildStatTd(statsRight),{x:7,y:1.1,w:6,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+    const cr=v('wpr_cancel_reasons');
+    if(cr) slide.addText('Cancellation Reasons:\n'+cr,{x:7,y:2.6,w:6,h:2,fontSize:11,color:'7B82A8',fontFace:'Calibri',wrap:true});
+    const wf=v('wpr_inv_way_forward');
+    if(wf) slide.addText('Way Forward: '+wf,{x:0.4,y:SLIDE_H-1.2,w:SLIDE_W-0.8,h:0.8,fontSize:11,color:'7B82A8',fontFace:'Calibri',wrap:true});
+  }
+
+  // Slide 13: Pending Agreements
+  addTableSlide(pptx,'Pending Agreements – Status & Ageing',
+    ['Name','Unit','Amount Paid','Ageing','Note','Target Date'],
+    tableRows('wpr_agreements_body').map(r=>r.slice(0,6)), col);
+
+  // Slide 14: Marketing Costs
+  {
+    const slide=pptx.addSlide();
+    slideHeader(slide,'Current Marketing Costs (Lifetime)',col,pptx);
+    const costs=[
+      ['Digital Lead Generation',v('wpr_mkt_digital_lead')||'—'],
+      ['Digital Visibility',v('wpr_mkt_digital_vis')||'—'],
+      ['Hoarding',v('wpr_mkt_hoarding')||'—'],
+      ['Wayboards',v('wpr_mkt_wayboard')||'—'],
+      ['Society Activation',v('wpr_mkt_society')||'—'],
+      ['Shoots Conducted',v('wpr_mkt_shoots')||'—'],
+      ['Property Portal (99acres)',v('wpr_mkt_99acres')||'—'],
+      ['Leaflet',v('wpr_mkt_leaflet')||'—'],
+      ['Influencer Charges',v('wpr_mkt_influencer')||'—'],
+      ['Website Chatbot',v('wpr_mkt_chatbot')||'—'],
+      ['FOS Incentive',v('wpr_mkt_fos')||'—'],
+      ['CP Brokerage',v('wpr_mkt_cp_broker')||'—'],
+      ['Referral Bonus',v('wpr_mkt_referral')||'—'],
+    ];
+    const td=costs.map((r,ri)=>[{text:r[0],options:{color:'7B82A8',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:10}},{text:r[1]?'₹'+Number(r[1]).toLocaleString('en-IN'):r[1],options:{color:'E8EAF6',fill:{color:ri%2===0?'1A1D27':'111827'},fontSize:10,align:'right'}}]);
+    slide.addTable(td,{x:0.4,y:1.1,w:7,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+
+    // Bookings by source
+    const srcData=[['Source','Bookings'],
+      ['Channel Partner',v('wpr_src_cp')||'0'],['Reference',v('wpr_src_ref')||'0'],
+      ['Walk-In',v('wpr_src_walkin')||'0'],['Pre-sales',v('wpr_src_ps')||'0'],
+      ['PS/CP Clash',v('wpr_src_clash')||'0'],['Total',v('wpr_src_total')||'0']];
+    const std=srcData.map((r,ri)=>r.map((cell,ci)=>({text:String(cell),options:{bold:ri===0||ri===srcData.length-1,color:ri===0?'E8EAF6':ci===0?'7B82A8':'E8EAF6',fill:{color:ri===0?'22263A':ri%2===0?'1A1D27':'111827'},fontSize:10,align:ci===0?'left':'center'}})));
+    slide.addText('Bookings by Source:',{x:8,y:1.1,w:5,h:0.4,fontSize:11,bold:true,color:'7B82A8',fontFace:'Calibri'});
+    slide.addTable(std,{x:8,y:1.55,w:5,border:{pt:0.5,color:'2E3350'},fontFace:'Calibri'});
+
+    const bk=v('wpr_mkt_bookings'), avg=v('wpr_avg_agreement');
+    if(bk||avg) slide.addText(`Bookings: ${bk||'—'}  |  Avg Agreement: ₹${avg?Number(avg).toLocaleString('en-IN'):'—'}`,{x:8,y:4.4,w:5,h:0.5,fontSize:12,bold:true,color:col.replace('#',''),fontFace:'Calibri'});
+  }
+
+  addThankYouSlide(pptx, col);
+  await pptx.writeFile({fileName:`Weekly_Project_Review_${g_project().replace(/\s+/g,'_')}_${g_week().replace(/\s+/g,'_')}.pptx`});
+}
+
+// ═══════════════════════════════════════
+// GENERATE: PPC XLSX
+// ═══════════════════════════════════════
+function generatePPC() {
+  const wb = XLSX.utils.book_new();
+
+  function styleCell(ws, addr, bold, bgHex, fgHex='000000') {
+    if(!ws[addr]) ws[addr]={t:'s',v:ws[addr]?ws[addr].v:''};
+    ws[addr].s = {
+      font: { bold, color: {rgb: fgHex} },
+      fill: { patternType:'solid', fgColor:{rgb:bgHex} },
+      border: { top:{style:'thin',color:{rgb:'CCCCCC'}}, bottom:{style:'thin',color:{rgb:'CCCCCC'}}, left:{style:'thin',color:{rgb:'CCCCCC'}}, right:{style:'thin',color:{rgb:'CCCCCC'}} },
+      alignment: { wrapText: true, vertical:'top' }
+    };
+  }
+
+  const optims = tableRows('ppc_optim_body').map((r,i)=>[`${i+1}`, r[0]||'']);
+
+  const rows = [
+    ['SECTION','PARAMETER / METRIC','DETAILS / NOTES','STATUS / ACTION','REMARKS'],
+    ['GENERAL INFO','Client / Project Name', g_project(),'',''],
+    ['','Campaign Name', v('ppc_campaign_name'),'',''],
+    ['','Week (Date Range)', g_week(),'',''],
+    ['','Account Manager', v('ppc_account_manager'),'',''],
+    ['','Platform', v('ppc_platform'),'',''],
+    ['QUALIFICATION','Campaign Objective', v('ppc_objective'),'',''],
+    ['','Qualification Logic / Criteria', v('ppc_qual_logic'),'',''],
+    ['','% Qualified Leads', v('ppc_qual_pct'),'',''],
+    ['FACEBOOK','Ad Set Level Changes', v('ppc_fb_adset'),'',''],
+    ['','Ad Level Changes', v('ppc_fb_ad'),'',''],
+    ['','Learning Phase Status', v('ppc_fb_learning'),'',''],
+    ['','Frequency Trend', v('ppc_fb_freq'),'',''],
+    ['','CPL Trend', v('ppc_fb_cpl'),'',''],
+    ['','Comments', v('ppc_fb_comments'),'',''],
+    ['GOOGLE','Campaign Type', v('ppc_goog_type'),'',''],
+    ['','Keyword / Ad Group Optimisations', v('ppc_goog_keyword'),'',''],
+    ['','Negative Keywords Added', v('ppc_goog_neg_kw'),'',''],
+    ['','Ad Copy / Extension Updates', v('ppc_goog_ad_copy'),'',''],
+    ['','Impression Share %', v('ppc_goog_imp_share'),'',''],
+    ['','Comments', v('ppc_goog_comments'),'',''],
+    ['BUDGET','Spent So Far (₹)', v('ppc_spent'),'',''],
+    ['','Remaining Budget (₹)', v('ppc_remaining'),'',''],
+    ['','Budget Change Made?', v('ppc_budget_changed'),'',''],
+    ['','Reason for Budget Change', v('ppc_budget_reason'),'',''],
+    ['CREATIVE PERFORMANCE','Top Performing Creatives', v('ppc_top_creatives'),'',''],
+    ['','Underperforming Creatives', v('ppc_under_creatives'),'',''],
+    ['','Offers / Festive Ads Live?', v('ppc_festive'),'',''],
+    ['','Actions Taken', v('ppc_creative_action'),'',''],
+    ['AD COMPLIANCE','Ad Compliance Issues', v('ppc_compliance_issues'),'',''],
+    ['','Actions Taken', v('ppc_compliance_actions'),'',''],
+    ['REMARKETING','Remarketing List Updated?', v('ppc_rmkt'),'',''],
+    ['','Unqualified Leads Excluded?', v('ppc_excl_unqual'),'',''],
+    ['','CP List Excluded?', v('ppc_excl_cp'),'',''],
+    ['DETAILED OPTIMISATIONS','','','',''],
+    ...optims.map(o=>['', o[0]+'. '+o[1],'','','']),
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:22},{wch:32},{wch:45},{wch:18},{wch:25}];
+  ws['!rows'] = rows.map(()=>({hpt:28}));
+
+  // Style header row
+  ['A1','B1','C1','D1','E1'].forEach(addr=>styleCell(ws,addr,true,'22263A','E8EAF6'));
+
+  // Style section cells
+  const sectionRows = [2,7,10,16,22,26,30,32,35];
+  sectionRows.forEach(rn=>{
+    const addr='A'+rn;
+    styleCell(ws,addr,true,'1A1D27','F59E0B');
+  });
+
+  // Alternate row styling
+  for(let r=2;r<=rows.length;r++) {
+    const bg = r%2===0 ? '1A1D27' : '111827';
+    ['B','C','D','E'].forEach(col2=>{
+      const addr=col2+r;
+      if(ws[addr]) styleCell(ws,addr,false,bg,'E8EAF6');
+    });
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, 'PPC Weekly Review');
+
+  // Summary sheet
+  const sumRows=[
+    ['PPC WEEKLY REVIEW SUMMARY',''],
+    ['Project',g_project()],
+    ['Week',g_week()],
+    ['Campaign',v('ppc_campaign_name')],
+    ['Platform',v('ppc_platform')],
+    ['',''],
+    ['SPEND SUMMARY',''],
+    ['Spent So Far (₹)',v('ppc_spent')],
+    ['Remaining Budget (₹)',v('ppc_remaining')],
+    ['',''],
+    ['PERFORMANCE',''],
+    ['% Qualified Leads',v('ppc_qual_pct')],
+    ['FB Learning Phase',v('ppc_fb_learning')],
+    ['FB Frequency Trend',v('ppc_fb_freq')],
+    ['FB CPL Trend',v('ppc_fb_cpl')],
+    ['Google Impression Share',v('ppc_goog_imp_share')],
+    ['',''],
+    ['COMPLIANCE & REMARKETING',''],
+    ['Ad Compliance Issues',v('ppc_compliance_issues')],
+    ['Remarketing Updated',v('ppc_rmkt')],
+    ['Unqualified Excluded',v('ppc_excl_unqual')],
+    ['CP List Excluded',v('ppc_excl_cp')],
+  ];
+  const wsSum=XLSX.utils.aoa_to_sheet(sumRows);
+  wsSum['!cols']=[{wch:30},{wch:50}];
+  XLSX.utils.book_append_sheet(wb,wsSum,'Summary');
+
+  XLSX.writeFile(wb, `PPC_Review_${g_project().replace(/\s+/g,'_')}_${g_week().replace(/\s+/g,'_')}.xlsx`);
+}
+
+// ═══════════════════════════════════════
+// MAIN GENERATE DISPATCHER
+// ═══════════════════════════════════════
+async function generateReport() {
+  const btn = document.getElementById('gen-btn');
+  const icon = document.getElementById('gen-btn-icon');
+  const txt = document.getElementById('gen-btn-text');
+  btn.disabled = true;
+  icon.innerHTML = '<div class="spinner"></div>';
+  txt.textContent = 'Generating…';
+
+  try {
+    if(currentTab==='cp') await generateCP();
+    else if(currentTab==='ps') await generatePS();
+    else if(currentTab==='wpr') await generateWPR();
+    else if(currentTab==='ppc') generatePPC();
+    showToast('✓ File downloaded successfully!', 'success');
+  } catch(err) {
+    console.error(err);
+    showToast('Error generating file. Check console.', 'error');
+  } finally {
+    btn.disabled = false;
+    icon.textContent = '⬇';
+    txt.textContent = 'Generate '+TAB_META[currentTab].label;
+  }
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+buildWeekTable('cp_metrics_body', CP_METRICS_ROWS, 5);
+buildWprWeekTable();
+buildLostTables();
+
+// Pre-add a few default rows
+['cp_weekly_active_body','cp_monthly_active_body','cp_top_body'].forEach(id=>{
+  addRow(id, id==='cp_top_body' ? ['','','0','0'] : ['','','0']);
+});
+addAgreementRow();
+addOptimRow();
+</script>
+</body>
 </html>
