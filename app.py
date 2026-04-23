@@ -1,100 +1,71 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from pptx import Presentation
+import io
 
-# Page Config
-st.set_page_config(page_title="BeyondWalls Weekly Reporting", layout="wide")
+st.set_page_config(page_title="BeyondWalls Report Generator", layout="wide")
 
-st.title("📊 Weekly Reporting Dashboard")
-st.subheader("Generate Mandate Project Reports")
+st.title("📊 BeyondWalls PPT Report Generator")
 
-# Sidebar for Template Selection
+# 1. Configuration & Template Upload
+st.sidebar.header("Template Setup")
+template_file = st.sidebar.file_uploader("Upload your PPTX Template", type="pptx")
+
 report_type = st.sidebar.selectbox(
-    "Select Report Template",
+    "Select Report Type",
     ["CP Aggregator Weekly", "Pre-Sales Review", "Weekly Project Review"]
 )
 
-# Shared Header Info
-with st.container():
-    col1, col2 = st.columns(2)
-    with col1:
-        project_name = st.text_input("Project Name", value="Aishwaryam Abhimaan")
-    with col2:
-        report_date = st.date_input("Reporting Week Ending", datetime.now())
-
-st.divider()
-
-# --- TEMPLATE 1: CP AGGREGATOR WEEKLY ---
-if report_type == "CP Aggregator Weekly":
-    st.header("Channel Partner Performance")
+if template_file:
+    st.success("Template Loaded!")
     
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        st.metric("Total Spends (Incl. GST)", st.number_input("Spends", value=0))
-        st.metric("Total Leads", st.number_input("Leads", value=0))
-    with col_b:
-        st.metric("Qualified Leads", st.number_input("Qualified", value=0))
-        st.metric("CP Visits", st.number_input("CP SVC", value=0))
-    with col_c:
-        st.metric("Total Bookings", st.number_input("Bookings", value=0))
-        st.metric("CPL", st.number_input("Cost Per Lead", value=0))
+    # 2. Data Entry UI
+    with st.form("data_entry"):
+        st.subheader(f"Enter Data for {report_type}")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            proj = st.text_input("Project Name", value="Aishwaryam Abhimaan") [cite: 4]
+            leads = st.number_input("Total Leads", value=0) [cite: 237]
+            spends = st.number_input("Total Spends (with GST)", value=0) [cite: 11]
+        
+        with col2:
+            svc = st.number_input("Site Visits Conducted", value=0) [cite: 242]
+            bookings = st.number_input("Total Bookings", value=0) [cite: 338]
+            date_range = st.text_input("Date Range", value="1st - 7th Sept") [cite: 5]
 
-    st.subheader("Top Performing CPs")
-    cp_data = st.data_editor(pd.DataFrame({
-        "CP Firm": ["Discounted Homes", "Enquiry Page"],
-        "Visits": [0, 0],
-        "Bookings": [0, 0]
-    }), num_rows="dynamic")
+        submit = st.form_submit_button("Generate PPTX")
 
-# --- TEMPLATE 2: PRE-SALES REVIEW ---
-elif report_type == "Pre-Sales Review":
-    st.header("Pre-Sales Funnel Analysis")
-    
-    col_ps1, col_ps2 = st.columns(2)
-    with col_ps1:
-        attempts = st.number_input("Avg Daily Call Attempts (Target: 200)", value=0)
-        scheduled = st.number_input("Visits Scheduled", value=0)
-    with col_ps2:
-        conducted = st.number_input("Visits Conducted", value=0)
-        ratio = st.number_input("Lead to SVC Ratio (%)", value=0.0)
-
-    st.subheader("Lead Unqualification Reasons")
-    unqual_reasons = st.multiselect("Select Major Reasons", 
-        ["Low Budget", "Location Mismatch", "Possession Date Mismatch", "Not Interested", "Postponed"])
-    st.text_area("Inferences & Remarks")
-
-# --- TEMPLATE 3: WEEKLY PROJECT REVIEW ---
-elif report_type == "Weekly Project Review":
-    st.header("Overall Project Health")
-    
-    tab1, tab2 = st.tabs(["Inventory Status", "Marketing Costs"])
-    
-    with tab1:
-        st.write("Live Inventory Overview")
-        st.data_editor(pd.DataFrame({
-            "Unit Type": ["1 BHK", "2 BHK", "3 BHK"],
-            "Total": [0, 0, 0],
-            "Sold": [0, 0, 0],
-            "Pending Agreement": [0, 0, 0]
-        }))
-
-    with tab2:
-        st.number_input("Lifetime Marketing Cost", value=25023100)
-        st.number_input("Current Ad Cost %", value=1.21)
-
-# --- SCREENSHOT UPLOADER ---
-st.divider()
-st.subheader("📸 Report Screenshots")
-uploaded_files = st.file_uploader("Upload Call Logs, Visit Lineups, or CRM Screenshots", accept_multiple_files=True)
-
-if uploaded_files:
-    for uploaded_file in uploaded_files:
-        st.image(uploaded_file, caption=uploaded_file.name, width=400)
-
-# --- DOWNLOADER ---
-st.divider()
-if st.button("Generate Final Report Summary"):
-    # Create a simple text-based summary for now
-    summary = f"REPORT: {report_type}\nPROJECT: {project_name}\nDATE: {report_date}\n"
-    st.download_button("Download .txt Report", summary, file_name=f"{project_name}_Weekly.txt")
-    st.success("Report generated! For full PPT automation, consider adding 'python-pptx' to your workflow.")
+    # 3. PPTX Manipulation Logic
+    if submit:
+        # Load the presentation from the uploaded template
+        prs = Presentation(template_file)
+        
+        # Simple search-and-replace logic for text placeholders
+        # Note: For images, you would use prs.slides[index].shapes.add_picture()
+        slides_updated = 0
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    # Replace keys with your inputs
+                    if "{{PROJECT_NAME}}" in shape.text:
+                        shape.text = shape.text.replace("{{PROJECT_NAME}}", proj)
+                    if "{{TOTAL_LEADS}}" in shape.text:
+                        shape.text = shape.text.replace("{{TOTAL_LEADS}}", str(leads))
+                    if "{{TOTAL_SPENDS}}" in shape.text:
+                        shape.text = shape.text.replace("{{TOTAL_SPENDS}}", str(spends))
+                    if "{{DATE_RANGE}}" in shape.text:
+                        shape.text = shape.text.replace("{{DATE_RANGE}}", date_range)
+        
+        # Save to a byte buffer for download
+        binary_output = io.BytesIO()
+        prs.save(binary_output)
+        
+        st.download_button(
+            label="📩 Download Processed PPT Report",
+            data=binary_output.getvalue(),
+            file_name=f"{proj}_Weekly_Report.pptx",
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        )
+else:
+    st.info("Please upload one of the BeyondWalls PPTX templates to begin.") [cite: 1, 234, 282]
